@@ -43,7 +43,6 @@ export default function WhatsAppJournal() {
   const sentimentEmoji: Record<string, string> = {
     very_happy: '😍',
     happy: '😊',
-    neutral: '😐',
     unhappy: '😞',
     very_unhappy: '😡',
   };

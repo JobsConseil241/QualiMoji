@@ -57,7 +57,7 @@ class ReportSeeder extends Seeder
             'recipients' => json_encode(['admin@qualimoji.com', 'julie.moreau@qualimoji.com']),
             'is_active' => true,
             'include_branches' => json_encode(['10000000-0000-0000-0000-000000000005']),
-            'include_sentiments' => json_encode(['negative', 'neutral']),
+            'include_sentiments' => json_encode(['unhappy', 'very_unhappy']),
             'include_global_metrics' => false,
             'include_branch_detail' => true,
             'include_charts' => false,

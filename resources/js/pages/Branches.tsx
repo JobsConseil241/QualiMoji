@@ -17,8 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { fetchBranches, fetchFeedbacks, fetchAlerts, computeBranchStats } from '@/services/dataService';
-import type { DbBranch, DbFeedback, DbAlert } from '@/services/dataService';
+import { fetchBranches } from '@/services/dataService';
 
 interface BranchRow {
   id: string;
@@ -47,8 +46,7 @@ const medals = [
   { icon: Award, color: 'text-amber-700', bg: 'bg-amber-700/10' },
 ];
 
-function getSatisfactionColor(score: number) {
-  const pct = (score / 5) * 100;
+function getSatisfactionColor(pct: number) {
   if (pct >= 80) return 'text-success';
   if (pct >= 60) return 'text-warning';
   return 'text-destructive';
@@ -73,30 +71,20 @@ export default function Branches() {
     async function load() {
       setLoading(true);
       try {
-        const [branches, feedbacks, alerts] = await Promise.all([
-          fetchBranches(),
-          fetchFeedbacks(),
-          fetchAlerts(),
-        ]);
+        const branches = await fetchBranches();
 
-        const activeAlertsByBranch: Record<string, number> = {};
-        alerts.forEach((a) => {
-          if (a.status === 'active') {
-            activeAlertsByBranch[a.branch_id] = (activeAlertsByBranch[a.branch_id] || 0) + 1;
-          }
-        });
-
-        const rows: Omit<BranchRow, 'rank'>[] = branches.map((b) => {
-          const stats = computeBranchStats(b, feedbacks);
-          const { trend, trendValue } = determineTrend(stats.satisfactionScore);
+        const rows: Omit<BranchRow, 'rank'>[] = branches.map((b: any) => {
+          const stats = b.stats ?? {};
+          const satisfactionRate = stats.satisfaction_rate ?? 0;
+          const { trend, trendValue } = determineTrend(satisfactionRate);
           return {
             id: b.id,
             name: b.name,
             city: b.city || '',
             region: b.region || '',
-            satisfactionScore: stats.satisfactionScore,
-            totalFeedbacks: stats.totalFeedbacks,
-            activeAlerts: activeAlertsByBranch[b.id] || 0,
+            satisfactionScore: satisfactionRate,
+            totalFeedbacks: stats.total_feedbacks ?? b.feedbacks_count ?? 0,
+            activeAlerts: stats.active_alerts ?? 0,
             trend,
             trendValue,
           };
@@ -236,7 +224,7 @@ export default function Branches() {
                   const Icon = TrendIcon[branch.trend];
                   const medal = branch.rank <= 3 ? medals[branch.rank - 1] : null;
                   const MedalIcon = medal?.icon;
-                  const scorePct = (branch.satisfactionScore / 5) * 100;
+                  const scorePct = Math.round(branch.satisfactionScore);
 
                   return (
                     <TableRow
@@ -264,8 +252,8 @@ export default function Branches() {
                       <TableCell className="text-sm">{branch.city}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 min-w-[120px]">
-                          <span className={cn('text-sm font-bold font-display', getSatisfactionColor(branch.satisfactionScore))}>
-                            {Math.round(scorePct)}%
+                          <span className={cn('text-sm font-bold font-display', getSatisfactionColor(scorePct))}>
+                            {scorePct}%
                           </span>
                           <Progress value={scorePct} className="h-1.5 flex-1 max-w-[80px]" />
                         </div>

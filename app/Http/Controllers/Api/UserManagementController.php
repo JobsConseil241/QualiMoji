@@ -16,7 +16,7 @@ class UserManagementController extends Controller
     {
         $user = $request->user();
         $query = User::where('organization_id', $user->organization_id)
-            ->with(['userRole', 'branchAssignments.branch']);
+            ->with(['userRole', 'branchAssignments']);
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -31,7 +31,11 @@ class UserManagementController extends Controller
             $query->whereHas('userRole', fn($q) => $q->where('role', $request->get('role')));
         }
 
-        $users = $query->orderBy('name')->get();
+        $users = $query->orderBy('name')->get()->map(function ($u) {
+            $data = $u->toArray();
+            $data['branch_ids'] = $u->branchAssignments->pluck('branch_id')->values()->toArray();
+            return $data;
+        });
 
         return response()->json(['users' => $users]);
     }
@@ -39,20 +43,23 @@ class UserManagementController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
+            'password' => 'nullable|string|min:8',
             'full_name' => 'nullable|string|max:255',
-            'role' => 'required|string|in:admin,manager,viewer',
+            'role' => 'required|string|in:admin,quality_director,branch_manager,it_admin,manager,viewer',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'uuid|exists:branches,id',
         ]);
 
+        $name = $validated['name'] ?? $validated['full_name'] ?? explode('@', $validated['email'])[0];
+        $password = $validated['password'] ?? Hash::make(\Illuminate\Support\Str::random(32));
+
         $user = User::create([
-            'name' => $validated['name'],
+            'name' => $name,
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'full_name' => $validated['full_name'] ?? $validated['name'],
+            'password' => is_string($password) && !str_starts_with($password, '$2y$') ? Hash::make($password) : $password,
+            'full_name' => $validated['full_name'] ?? $name,
             'organization_id' => $request->user()->organization_id,
             'is_active' => true,
         ]);
@@ -74,14 +81,14 @@ class UserManagementController extends Controller
         AuditLog::create([
             'actor_id' => $request->user()->id,
             'actor_email' => $request->user()->email,
-            'action' => 'user.created',
+            'action' => 'user_invited',
             'target_type' => 'user',
             'target_id' => (string) $user->id,
-            'details' => ['email' => $user->email, 'role' => $validated['role']],
+            'details' => ['email' => $user->email, 'full_name' => $user->full_name, 'role' => $validated['role']],
         ]);
 
         return response()->json([
-            'user' => $user->load('userRole', 'branchAssignments.branch'),
+            'user' => $user->load('userRole', 'branchAssignments'),
         ], 201);
     }
 
@@ -98,7 +105,7 @@ class UserManagementController extends Controller
             'name' => 'string|max:255',
             'full_name' => 'nullable|string|max:255',
             'is_active' => 'boolean',
-            'role' => 'nullable|string|in:admin,manager,viewer',
+            'role' => 'nullable|string|in:admin,quality_director,branch_manager,it_admin,manager,viewer',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'uuid|exists:branches,id',
         ]);
@@ -122,17 +129,25 @@ class UserManagementController extends Controller
             }
         }
 
+        $action = 'user_role_changed';
+        if (isset($validated['is_active'])) {
+            $action = $validated['is_active'] ? 'user_activated' : 'user_deactivated';
+        }
+        if (isset($validated['branch_ids'])) {
+            $action = 'user_branches_updated';
+        }
+
         AuditLog::create([
             'actor_id' => $request->user()->id,
             'actor_email' => $request->user()->email,
-            'action' => 'user.updated',
+            'action' => $action,
             'target_type' => 'user',
             'target_id' => (string) $managedUser->id,
-            'details' => $validated,
+            'details' => ['email' => $managedUser->email, 'full_name' => $managedUser->full_name, ...$validated],
         ]);
 
         return response()->json([
-            'user' => $managedUser->fresh()->load('userRole', 'branchAssignments.branch'),
+            'user' => $managedUser->fresh()->load('userRole', 'branchAssignments'),
         ]);
     }
 

@@ -23,6 +23,7 @@ class KioskConfig extends Model
         'offline_mode_enabled',
         'screensaver_slides',
         'message_templates',
+        'footer_text',
     ];
 
     protected function casts(): array

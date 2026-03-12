@@ -17,10 +17,6 @@ const MESSAGES: Record<string, { title: string; subtitle: string }> = {
     title: 'Merci pour votre retour positif ! 😊',
     subtitle: 'Votre satisfaction est notre priorité.',
   },
-  neutral: {
-    title: 'Merci pour votre feedback !',
-    subtitle: 'Nous travaillons à nous améliorer.',
-  },
   unhappy: {
     title: 'Merci de nous avoir fait part de votre expérience.',
     subtitle: 'Un responsable vous contactera si vous avez laissé vos coordonnées.',
@@ -43,7 +39,7 @@ export default function ThankYouScreen({ sentiment, autoResetDelay, onReset }: T
     pauseOnTouch: true,
   });
 
-  const msg = MESSAGES[sentiment] || MESSAGES.neutral;
+  const msg = MESSAGES[sentiment] || MESSAGES.happy;
   const dashOffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (

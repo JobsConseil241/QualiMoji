@@ -96,8 +96,19 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
         </div>
       )}
 
-      {/* Pulsing CTA */}
-      <div className="absolute bottom-10 left-0 right-0 text-center z-20">
+      {/* Tap hint animation */}
+      <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center gap-3 z-20">
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.8, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          className="w-14 h-14 rounded-full border-2 border-white/50 flex items-center justify-center"
+        >
+          <motion.div
+            animate={{ scale: [1, 0.85, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-6 h-6 rounded-full bg-white/60"
+          />
+        </motion.div>
         <motion.p
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}

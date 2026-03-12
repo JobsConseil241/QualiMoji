@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { mockBranches } from '@/data/mockData';
+import { fetchBranches } from '@/services/dataService';
 import { QuestionsConfig, DEFAULT_CONFIGS, type QuestionConfig } from '@/components/settings/QuestionsConfig';
 import UserManagement from '@/components/settings/UserManagement';
 import OrganizationConfig from '@/components/settings/OrganizationConfig';
@@ -83,11 +83,16 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [newRecipient, setNewRecipient] = useState<Record<string, string>>({});
   const [questionConfigs, setQuestionConfigs] = useState<QuestionConfig[]>(DEFAULT_CONFIGS);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
 
   /* load from DB */
   useEffect(() => {
     (async () => {
       try {
+        // Load branches
+        const branchList = await fetchBranches();
+        setBranches((branchList as any[]).map((b: any) => ({ id: b.id, name: b.name })));
+
         // Load KPI configs
         const { data: kpiData } = await api.get('/settings/kpi');
         const kpiRows = kpiData?.kpi_configs ?? kpiData?.data ?? (Array.isArray(kpiData) ? kpiData : []);
@@ -396,7 +401,7 @@ export default function Settings() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mockBranches.map((branch) => (
+                      {branches.map((branch) => (
                         <TableRow key={branch.id}>
                           <TableCell className="text-xs font-medium">{branch.name.replace('Agence ', '')}</TableCell>
                           {thresholds.map((t) => {

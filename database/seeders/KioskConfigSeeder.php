@@ -25,9 +25,10 @@ class KioskConfigSeeder extends Seeder
             'haptic_enabled' => false,
             'offline_mode_enabled' => true,
             'message_templates' => json_encode([
-                'positive' => 'Merci pour votre retour positif ! Nous sommes ravis que votre expérience ait été satisfaisante.',
-                'neutral' => 'Merci pour votre avis. Nous travaillons continuellement à améliorer nos services.',
-                'negative' => 'Nous sommes désolés pour cette expérience. Un responsable vous contactera dans les plus brefs délais.',
+                'very_happy' => 'Merci beaucoup pour votre retour enthousiaste ! Votre satisfaction nous motive chaque jour.',
+                'happy' => 'Merci pour votre retour positif ! Nous sommes ravis que votre expérience ait été satisfaisante.',
+                'unhappy' => 'Merci pour votre retour. Nous travaillons continuellement à améliorer nos services.',
+                'very_unhappy' => 'Nous sommes désolés pour cette expérience. Un responsable vous contactera dans les plus brefs délais.',
             ]),
         ]);
 
@@ -45,9 +46,10 @@ class KioskConfigSeeder extends Seeder
             'haptic_enabled' => false,
             'offline_mode_enabled' => true,
             'message_templates' => json_encode([
-                'positive' => 'Merci beaucoup ! Votre satisfaction est notre priorité.',
-                'neutral' => 'Merci pour votre retour. Nous allons en tenir compte.',
-                'negative' => 'Nous sommes sincèrement désolés. Un manager va vous rappeler très rapidement.',
+                'very_happy' => 'Merci beaucoup ! Votre satisfaction est notre priorité.',
+                'happy' => 'Merci pour votre retour positif !',
+                'unhappy' => 'Merci pour votre retour. Nous allons en tenir compte.',
+                'very_unhappy' => 'Nous sommes sincèrement désolés. Un manager va vous rappeler très rapidement.',
             ]),
         ]);
     }

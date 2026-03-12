@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\KioskConfig;
 use App\Models\QuestionConfig;
+use App\Models\Feedback;
 use App\Models\Organization;
+use App\Jobs\SendCustomerWhatsApp;
 use Illuminate\Http\Request;
 
 class KioskController extends Controller
@@ -46,5 +48,23 @@ class KioskController extends Controller
             'kiosk_config' => $kioskConfig,
             'question_configs' => $questionConfigs,
         ]);
+    }
+
+    public function updateContact(Request $request, Feedback $feedback)
+    {
+        $validated = $request->validate([
+            'customer_name' => 'nullable|string|max:255',
+            'customer_email' => 'nullable|email|max:255',
+            'customer_phone' => 'nullable|string|max:30',
+            'wants_callback' => 'boolean',
+        ]);
+
+        $feedback->update($validated);
+
+        if (!empty($validated['customer_phone'])) {
+            SendCustomerWhatsApp::dispatchSync($feedback->fresh());
+        }
+
+        return response()->json(['feedback' => $feedback]);
     }
 }

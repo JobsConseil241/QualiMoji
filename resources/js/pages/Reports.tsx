@@ -16,8 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { mockBranches, mockFeedbacks, mockAlerts, mockSentimentData } from '@/data/mockData';
 import api from '@/lib/api';
+import { fetchBranches, fetchFeedbacks, fetchAlerts, fetchDashboardStats } from '@/services/dataService';
 import { useAuth } from '@/hooks/useAuth';
 import {
   buildReportData, exportToExcel, exportToPDF,
@@ -46,12 +46,30 @@ export default function Reports() {
   const [customStart, setCustomStart] = useState<Date>(subDays(new Date(), 30));
   const [customEnd, setCustomEnd] = useState<Date>(new Date());
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
-  const [selectedSentiments, setSelectedSentiments] = useState<string[]>(['positive', 'neutral', 'negative']);
+  const [selectedSentiments, setSelectedSentiments] = useState<string[]>(['positive', 'negative']);
   const [includeGlobalMetrics, setIncludeGlobalMetrics] = useState(true);
   const [includeBranchDetail, setIncludeBranchDetail] = useState(true);
   const [includeFeedbacks, setIncludeFeedbacks] = useState(true);
   const [includeAlerts, setIncludeAlerts] = useState(true);
   const [includeCharts, setIncludeCharts] = useState(true);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [reportData, setReportData] = useState<any>(null);
+
+  // Load branches and report data
+  useEffect(() => {
+    (async () => {
+      try {
+        const [branchList, stats, feedbacks, alerts] = await Promise.all([
+          fetchBranches(),
+          fetchDashboardStats('30d'),
+          fetchFeedbacks({ per_page: 500 }),
+          fetchAlerts({ per_page: 200 }),
+        ]);
+        setBranches((branchList as any[]).map((b: any) => ({ id: b.id, name: b.name })));
+        setReportData({ branches: branchList, stats, feedbacks, alerts });
+      } catch {}
+    })();
+  }, []);
 
   // Load history from database
   const fetchHistory = useCallback(async () => {
@@ -105,7 +123,7 @@ export default function Reports() {
     // Simulate slight delay for UX
     await new Promise((r) => setTimeout(r, 600));
     try {
-      const data = buildReportData(title, type, start, end, { mockBranches, mockFeedbacks, mockAlerts, mockSentimentData }, options);
+      const data = buildReportData(title, type, start, end, reportData ?? {}, options);
       if (fmt === 'excel') {
         exportToExcel(data, title.replace(/\s+/g, '_'));
       } else {
@@ -315,7 +333,7 @@ export default function Reports() {
                 </Label>
                 <p className="text-[10px] text-muted-foreground">Laissez vide pour inclure toutes les agences</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {mockBranches.map((b) => (
+                  {branches.map((b) => (
                     <label key={b.id} className={cn(
                       'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-xs',
                       selectedBranches.includes(b.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
@@ -324,7 +342,7 @@ export default function Reports() {
                         checked={selectedBranches.includes(b.id)}
                         onCheckedChange={() => toggleBranch(b.id)}
                       />
-                      {b.name.replace('Agence ', '')}
+                      {b.name}
                     </label>
                   ))}
                 </div>
@@ -338,7 +356,6 @@ export default function Reports() {
                 <div className="flex gap-3">
                   {[
                     { key: 'positive', label: '😊 Positif', color: 'text-accent' },
-                    { key: 'neutral', label: '😐 Neutre', color: 'text-yellow-500' },
                     { key: 'negative', label: '😞 Négatif', color: 'text-destructive' },
                   ].map((s) => (
                     <label key={s.key} className={cn(

@@ -2,13 +2,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Star, MessageSquare, AlertTriangle, UserCheck, MapPin,
-  TrendingUp, TrendingDown, Minus, Phone, Mail, User, CheckCircle2, Send,
-  Filter, Loader2,
+  Phone, Mail, User, Filter, Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { StatCard } from '@/components/dashboard/StatCard';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -17,19 +15,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend,
+  Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
   Bar, BarChart, Cell,
 } from 'recharts';
 import { cn } from '@/lib/utils';
-import {
-  fetchBranches, fetchFeedbacks, fetchAlerts, computeBranchStats,
-} from '@/services/dataService';
-import type { DbBranch, DbFeedback, DbAlert } from '@/services/dataService';
+import { fetchBranchDetail } from '@/services/dataService';
+import type { DbFeedback } from '@/services/dataService';
 
 const sentimentConfig: Record<string, { label: string; color: string }> = {
   very_happy: { label: 'Très satisfait', color: 'bg-success/10 text-success border-success/30' },
   happy: { label: 'Satisfait', color: 'bg-primary/10 text-primary border-primary/30' },
-  neutral: { label: 'Neutre', color: 'bg-warning/10 text-warning border-warning/30' },
   unhappy: { label: 'Insatisfait', color: 'bg-orange-500/10 text-orange-500 border-orange-500/30' },
   very_unhappy: { label: 'Très insatisfait', color: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
@@ -40,15 +35,16 @@ const ISSUE_COLORS = [
 ];
 
 function sentimentToScore(s: string): number {
-  const map: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 2, very_unhappy: 1 };
-  return map[s] || 3;
+  const map: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
+  return map[s] || 2;
 }
 
-function getComment(f: DbFeedback): string {
-  const resp = f.follow_up_responses as any;
+function getComment(f: any): string {
+  const resp = f.follow_up_responses;
   if (!resp) return '';
   if (resp.comment) return resp.comment;
   if (resp.selectedOptions && Array.isArray(resp.selectedOptions)) return resp.selectedOptions.join(', ');
+  if (resp.freeText) return resp.freeText;
   return '';
 }
 
@@ -57,27 +53,17 @@ export default function BranchDetail() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [branch, setBranch] = useState<DbBranch | null>(null);
-  const [allBranches, setAllBranches] = useState<DbBranch[]>([]);
-  const [feedbacks, setFeedbacks] = useState<DbFeedback[]>([]);
-  const [alerts, setAlerts] = useState<DbAlert[]>([]);
+  const [data, setData] = useState<any>(null);
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
-  const [selectedFeedback, setSelectedFeedback] = useState<DbFeedback | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
 
   useEffect(() => {
     async function load() {
+      if (!id) return;
       setLoading(true);
       try {
-        const [branches, allFeedbacks, allAlerts] = await Promise.all([
-          fetchBranches(),
-          fetchFeedbacks(),
-          fetchAlerts(),
-        ]);
-        setAllBranches(branches);
-        const found = branches.find((b) => b.id === id);
-        setBranch(found || null);
-        setFeedbacks(allFeedbacks);
-        setAlerts(allAlerts.filter((a) => a.branch_id === id));
+        const result = await fetchBranchDetail(id, '30d');
+        setData(result);
       } catch (err) {
         console.error('Failed to load branch detail:', err);
       } finally {
@@ -87,75 +73,11 @@ export default function BranchDetail() {
     load();
   }, [id]);
 
-  const branchFeedbacks = useMemo(() => {
-    if (!branch) return [];
-    return feedbacks.filter((f) => f.branch_id === branch.id);
-  }, [feedbacks, branch]);
-
-  const stats = useMemo(() => {
-    if (!branch) return null;
-    return computeBranchStats(branch, feedbacks);
-  }, [branch, feedbacks]);
-
-  const rank = useMemo(() => {
-    if (!branch) return 0;
-    // We need all feedbacks to rank - fetch all feedbacks is expensive, so use a simple approach
-    const sorted = [...allBranches].sort((a, b) => {
-      const sa = computeBranchStats(a, feedbacks);
-      const sb = computeBranchStats(b, feedbacks);
-      return sb.satisfactionScore - sa.satisfactionScore;
-    });
-    return sorted.findIndex((b) => b.id === branch.id) + 1;
-  }, [allBranches, branch, feedbacks]);
-
-  const activeAlerts = useMemo(() => alerts.filter((a) => a.status === 'active'), [alerts]);
-
+  const feedbacks: any[] = data?.feedbacks ?? [];
   const filteredFeedbacks = useMemo(() => {
-    if (sentimentFilter === 'all') return branchFeedbacks;
-    return branchFeedbacks.filter((f) => f.sentiment === sentimentFilter);
-  }, [branchFeedbacks, sentimentFilter]);
-
-  // Compute common issues from follow_up_responses
-  const issues = useMemo(() => {
-    const counts: Record<string, number> = {};
-    branchFeedbacks.forEach((f) => {
-      const resp = f.follow_up_responses as any;
-      if (resp?.selectedOptions && Array.isArray(resp.selectedOptions)) {
-        resp.selectedOptions.forEach((opt: string) => {
-          counts[opt] = (counts[opt] || 0) + 1;
-        });
-      }
-    });
-    const total = Object.values(counts).reduce((s, c) => s + c, 0);
-    if (total === 0) return [];
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([label, count]) => ({
-        label,
-        percentage: Math.round((count / total) * 100),
-        count,
-      }));
-  }, [branchFeedbacks]);
-
-  // Build satisfaction evolution from feedbacks grouped by week
-  const evolutionData = useMemo(() => {
-    if (branchFeedbacks.length === 0) return [];
-    const sorted = [...branchFeedbacks].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    const weeks: Record<string, number[]> = {};
-    sorted.forEach((f) => {
-      const d = new Date(f.created_at);
-      const weekStart = new Date(d);
-      weekStart.setDate(d.getDate() - d.getDay());
-      const key = weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-      if (!weeks[key]) weeks[key] = [];
-      weeks[key].push(sentimentToScore(f.sentiment));
-    });
-    return Object.entries(weeks).map(([week, scores]) => ({
-      month: week,
-      agence: +(scores.reduce((s, v) => s + v, 0) / scores.length).toFixed(1),
-    }));
-  }, [branchFeedbacks]);
+    if (sentimentFilter === 'all') return feedbacks;
+    return feedbacks.filter((f: any) => f.sentiment === sentimentFilter);
+  }, [feedbacks, sentimentFilter]);
 
   if (loading) {
     return (
@@ -165,7 +87,7 @@ export default function BranchDetail() {
     );
   }
 
-  if (!branch || !stats) {
+  if (!data?.branch || !data?.stats) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Agence introuvable</p>
@@ -174,7 +96,14 @@ export default function BranchDetail() {
     );
   }
 
-  const satisfactionPct = Math.round((stats.satisfactionScore / 5) * 100);
+  const branch = data.branch;
+  const stats = data.stats;
+  const evolution: any[] = data.evolution ?? [];
+  const issues: any[] = data.issues ?? [];
+  const satisfactionPct = Math.round(stats.satisfaction_rate ?? 0);
+  const positiveRate = Math.round(stats.positive_rate ?? 0);
+  const rank = stats.rank ?? 0;
+  const totalBranches = stats.total_branches ?? 0;
 
   return (
     <div className="space-y-6">
@@ -187,7 +116,7 @@ export default function BranchDetail() {
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-display font-bold tracking-tight">{branch.name}</h1>
             <Badge variant="outline" className="text-xs font-display">
-              #{rank} / {allBranches.length}
+              #{rank} / {totalBranches}
             </Badge>
           </div>
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
@@ -207,9 +136,9 @@ export default function BranchDetail() {
       {/* Stat Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Satisfaction" value={`${satisfactionPct}%`} icon={Star} subtitle="score global" colorMode="satisfaction" rawValue={satisfactionPct} />
-        <StatCard title="Feedbacks" value={stats.totalFeedbacks.toLocaleString()} icon={MessageSquare} subtitle="total reçus" />
-        <StatCard title="Alertes actives" value={activeAlerts.length} icon={AlertTriangle} colorMode="alert" rawValue={activeAlerts.length} subtitle="en cours" />
-        <StatCard title="Taux positif" value={`${stats.positiveRate}%`} icon={UserCheck} subtitle="satisfaits + très satisfaits" progress={stats.positiveRate} />
+        <StatCard title="Feedbacks" value={(stats.total_feedbacks ?? 0).toLocaleString()} icon={MessageSquare} subtitle="total reçus" />
+        <StatCard title="Alertes actives" value={stats.active_alerts ?? 0} icon={AlertTriangle} colorMode="alert" rawValue={stats.active_alerts ?? 0} subtitle="en cours" />
+        <StatCard title="Taux positif" value={`${positiveRate}%`} icon={UserCheck} subtitle="satisfaits + très satisfaits" progress={positiveRate} />
       </div>
 
       {/* Charts Row */}
@@ -221,14 +150,14 @@ export default function BranchDetail() {
             <p className="text-xs text-muted-foreground">Score moyen par semaine</p>
           </CardHeader>
           <CardContent>
-            {evolutionData.length > 0 ? (
+            {evolution.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={evolutionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <LineChart data={evolution} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <XAxis dataKey="week" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis domain={[1, 5]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '10px', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="agence" name={branch.name} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="score" name={branch.name} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -277,7 +206,6 @@ export default function BranchDetail() {
                   <SelectItem value="all">Tous</SelectItem>
                   <SelectItem value="very_happy">Très satisfait</SelectItem>
                   <SelectItem value="happy">Satisfait</SelectItem>
-                  <SelectItem value="neutral">Neutre</SelectItem>
                   <SelectItem value="unhappy">Insatisfait</SelectItem>
                   <SelectItem value="very_unhappy">Très insatisfait</SelectItem>
                 </SelectContent>
@@ -289,8 +217,8 @@ export default function BranchDetail() {
           {filteredFeedbacks.length === 0 && (
             <p className="text-sm text-muted-foreground py-4 text-center">Aucun feedback pour ce filtre.</p>
           )}
-          {filteredFeedbacks.map((f) => {
-            const sentCfg = sentimentConfig[f.sentiment] || sentimentConfig.neutral;
+          {filteredFeedbacks.map((f: any) => {
+            const sentCfg = sentimentConfig[f.sentiment] || sentimentConfig.unhappy;
             const score = sentimentToScore(f.sentiment);
             const comment = getComment(f);
             return (
@@ -328,7 +256,7 @@ export default function BranchDetail() {
       <Dialog open={!!selectedFeedback} onOpenChange={() => setSelectedFeedback(null)}>
         <DialogContent className="sm:max-w-md">
           {selectedFeedback && (() => {
-            const sentCfg = sentimentConfig[selectedFeedback.sentiment] || sentimentConfig.neutral;
+            const sentCfg = sentimentConfig[selectedFeedback.sentiment] || sentimentConfig.unhappy;
             const score = sentimentToScore(selectedFeedback.sentiment);
             const comment = getComment(selectedFeedback);
             return (

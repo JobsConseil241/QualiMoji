@@ -49,7 +49,7 @@ class FeedbackController extends Controller
     {
         $validated = $request->validate([
             'branch_id' => 'required|uuid|exists:branches,id',
-            'sentiment' => 'required|string|in:very_happy,happy,neutral,unhappy,very_unhappy',
+            'sentiment' => 'required|string|in:very_happy,happy,unhappy,very_unhappy',
             'follow_up_responses' => 'nullable|array',
             'customer_name' => 'nullable|string|max:255',
             'customer_email' => 'nullable|email|max:255',

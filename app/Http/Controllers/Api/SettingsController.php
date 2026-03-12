@@ -113,6 +113,7 @@ class SettingsController extends Controller
             'offline_mode_enabled' => 'boolean',
             'screensaver_slides' => 'nullable|array',
             'message_templates' => 'nullable|array',
+            'footer_text' => 'nullable|string|max:255',
         ]);
 
         $user = $request->user();

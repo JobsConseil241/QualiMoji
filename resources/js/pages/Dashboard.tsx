@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Star, MessageSquare, AlertTriangle, UserCheck, RefreshCw } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { BranchRanking } from '@/components/dashboard/BranchRanking';
@@ -13,62 +13,43 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import WhatsAppJournal from '@/components/dashboard/WhatsAppJournal';
 import { useToast } from '@/hooks/use-toast';
 import {
-  fetchBranches, fetchFeedbacks, fetchAlerts,
-  computeBranchStats, subscribeFeedbacks, subscribeAlerts,
-  type DbBranch, type DbFeedback, type DbAlert,
+  fetchDashboardStats, fetchAlerts,
+  subscribeFeedbacks, subscribeAlerts,
+  type DbAlert,
 } from '@/services/dataService';
-import { format, startOfWeek, subDays, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Branch, Alert } from '@/types';
 
 type PeriodValue = 'today' | '7d' | '30d' | '90d' | 'custom';
 
-function getPeriodDays(period: PeriodValue): number | null {
+function periodToApi(period: PeriodValue): string {
   switch (period) {
-    case 'today': return 1;
-    case '7d': return 7;
-    case '30d': return 30;
-    case '90d': return 90;
-    default: return null;
+    case 'today': return '24h';
+    case '7d': return '7d';
+    case '30d': return '30d';
+    case '90d': return '90d';
+    default: return '30d';
   }
-}
-
-function getPeriodSince(period: PeriodValue): Date | null {
-  const now = new Date();
-  const days = getPeriodDays(period);
-  if (days === null) return null;
-  return days === 1 ? startOfDay(now) : subDays(now, days);
-}
-
-function getPreviousPeriodRange(period: PeriodValue): { since: Date; until: Date } | null {
-  const days = getPeriodDays(period);
-  if (days === null) return null;
-  const now = new Date();
-  const currentStart = days === 1 ? startOfDay(now) : subDays(now, days);
-  const previousStart = days === 1 ? subDays(startOfDay(now), 1) : subDays(now, days * 2);
-  return { since: previousStart, until: currentStart };
 }
 
 export default function Dashboard() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [branches, setBranches] = useState<DbBranch[]>([]);
-  const [feedbacks, setFeedbacks] = useState<DbFeedback[]>([]);
-  const [alerts, setAlerts] = useState<DbAlert[]>([]);
   const [period, setPeriod] = useState<PeriodValue>('30d');
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [alerts, setAlerts] = useState<DbAlert[]>([]);
 
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [b, f, a] = await Promise.all([
-        fetchBranches(),
-        fetchFeedbacks(),
+      const [stats, allAlerts] = await Promise.all([
+        fetchDashboardStats(periodToApi(period)),
         fetchAlerts(),
       ]);
-      setBranches(b);
-      setFeedbacks(f);
-      setAlerts(a);
+      setDashboardData(stats);
+      setAlerts(allAlerts);
     } catch (err: any) {
       console.error('Dashboard data load error:', err);
       setError(err.message || 'Erreur de chargement');
@@ -76,31 +57,18 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, period]);
 
   useEffect(() => {
+    setLoading(true);
     loadData();
+  }, [loadData]);
+
+  useEffect(() => {
     const feedbackSub = subscribeFeedbacks(() => loadData());
     const alertSub = subscribeAlerts(() => loadData());
     return () => { feedbackSub.unsubscribe(); alertSub.unsubscribe(); };
   }, [loadData]);
-
-  // Filter feedbacks by period
-  const filteredFeedbacks = useMemo(() => {
-    const since = getPeriodSince(period);
-    if (!since) return feedbacks;
-    return feedbacks.filter(f => new Date(f.created_at) >= since);
-  }, [feedbacks, period]);
-
-  // Previous period feedbacks for trend comparison
-  const prevFeedbacks = useMemo(() => {
-    const range = getPreviousPeriodRange(period);
-    if (!range) return [];
-    return feedbacks.filter(f => {
-      const d = new Date(f.created_at);
-      return d >= range.since && d < range.until;
-    });
-  }, [feedbacks, period]);
 
   if (loading) return <DashboardSkeleton />;
 
@@ -118,80 +86,57 @@ export default function Dashboard() {
     );
   }
 
-  // Compute stats from filtered feedbacks
-  const totalFeedbacks = filteredFeedbacks.length;
-  const activeAlerts = alerts.filter(a => a.status === 'active').length;
+  if (!dashboardData) return null;
 
-  const sentimentScores: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 2, very_unhappy: 1 };
-  const avgSatisfaction = totalFeedbacks > 0
-    ? filteredFeedbacks.reduce((s, f) => s + (sentimentScores[f.sentiment] || 3), 0) / totalFeedbacks
-    : 0;
-  const satisfactionPct = Math.round((avgSatisfaction / 5) * 100);
+  const totalFeedbacks = dashboardData.total_feedbacks ?? 0;
+  const satisfactionPct = Math.round(dashboardData.satisfaction_rate ?? 0);
+  const satisfactionTrend = Math.round(dashboardData.trend ?? 0);
+  const activeAlerts = dashboardData.active_alerts ?? 0;
+  const sentimentCounts = dashboardData.sentiment_counts ?? {};
 
-  // Previous period stats for trends
-  const prevTotal = prevFeedbacks.length;
-  const prevAvg = prevTotal > 0
-    ? prevFeedbacks.reduce((s, f) => s + (sentimentScores[f.sentiment] || 3), 0) / prevTotal
-    : 0;
-  const prevSatPct = Math.round((prevAvg / 5) * 100);
-
-  function trendPct(current: number, previous: number): number {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return Math.round(((current - previous) / previous) * 100);
-  }
-
-  const satisfactionTrend = trendPct(satisfactionPct, prevSatPct);
-  const feedbacksTrend = trendPct(totalFeedbacks, prevTotal);
-
-  const sentimentCounts = {
-    very_happy: filteredFeedbacks.filter(f => f.sentiment === 'very_happy').length,
-    happy: filteredFeedbacks.filter(f => f.sentiment === 'happy').length,
-    neutral: filteredFeedbacks.filter(f => f.sentiment === 'neutral').length,
-    unhappy: filteredFeedbacks.filter(f => f.sentiment === 'unhappy').length,
-    very_unhappy: filteredFeedbacks.filter(f => f.sentiment === 'very_unhappy').length,
-  };
   const sentimentData = [
-    { name: 'Très satisfait', value: sentimentCounts.very_happy, color: '#16A34A' },
-    { name: 'Satisfait', value: sentimentCounts.happy, color: '#84CC16' },
-    { name: 'Neutre', value: sentimentCounts.neutral, color: '#EAB308' },
-    { name: 'Insatisfait', value: sentimentCounts.unhappy, color: '#F97316' },
-    { name: 'Très insatisfait', value: sentimentCounts.very_unhappy, color: '#DC2626' },
+    { name: 'Très satisfait', value: sentimentCounts.very_happy ?? 0, color: '#16A34A' },
+    { name: 'Satisfait', value: sentimentCounts.happy ?? 0, color: '#84CC16' },
+    { name: 'Insatisfait', value: sentimentCounts.unhappy ?? 0, color: '#F97316' },
+    { name: 'Très insatisfait', value: sentimentCounts.very_unhappy ?? 0, color: '#DC2626' },
   ];
 
-  // Build satisfaction-by-branch evolution from filtered feedbacks
-  const sentimentScoreMap: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 2, very_unhappy: 1 };
+  // Build satisfaction evolution chart from daily_stats
+  const dailyStats = dashboardData.daily_stats ?? {};
   const satisfactionByBranch = (() => {
-    const weekMap = new Map<string, Map<string, number[]>>();
-    filteredFeedbacks.forEach(f => {
-      const weekKey = format(startOfWeek(new Date(f.created_at), { weekStartsOn: 1 }), 'dd MMM', { locale: fr });
-      if (!weekMap.has(weekKey)) weekMap.set(weekKey, new Map());
-      const branchScores = weekMap.get(weekKey)!;
-      const branch = branches.find(b => b.id === f.branch_id);
-      if (!branch) return;
-      if (!branchScores.has(branch.name)) branchScores.set(branch.name, []);
-      branchScores.get(branch.name)!.push(sentimentScoreMap[f.sentiment] || 3);
-    });
-    return Array.from(weekMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, branchMap]) => {
-        const row: Record<string, any> = { date };
-        branchMap.forEach((scores, name) => {
-          row[name] = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+    const entries = Object.entries(dailyStats) as [string, any[]][];
+    if (entries.length === 0) return [];
+    const sentimentScores: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
+    return entries
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, sentiments]) => {
+        let totalScore = 0;
+        let totalCount = 0;
+        (sentiments as any[]).forEach((s: any) => {
+          const score = sentimentScores[s.sentiment] || 3;
+          totalScore += score * s.count;
+          totalCount += s.count;
         });
-        return row;
+        const avg = totalCount > 0 ? Math.round((totalScore / totalCount) * 10) / 10 : 0;
+        return { date: format(new Date(date), 'dd MMM', { locale: fr }), 'Score moyen': avg };
       });
   })();
 
-  const branchList: Branch[] = branches.map(b => {
-    const stats = computeBranchStats(b, filteredFeedbacks);
-    return {
-      id: b.id, name: b.name, city: b.city || '', address: b.address || undefined,
-      region: b.region || '', satisfactionScore: stats.satisfactionScore,
-      totalFeedbacks: stats.totalFeedbacks,
-      activeAlerts: alerts.filter(a => a.branch_name === b.name && a.status === 'active').length,
-      trend: 'stable' as const, responseRate: 0,
-    };
-  });
+  // Branch ranking from branch_performance
+  const branchPerformance: any[] = dashboardData.branch_performance ?? [];
+  const branchList: Branch[] = branchPerformance
+    .map((bp: any) => ({
+      id: bp.branch_id,
+      name: bp.branch_name,
+      city: '',
+      region: '',
+      satisfactionScore: Math.round((bp.satisfaction_rate / 100) * 5 * 10) / 10,
+      totalFeedbacks: bp.total_feedbacks,
+      activeAlerts: 0,
+      trend: 'stable' as const,
+      responseRate: bp.satisfaction_rate,
+    }))
+    .sort((a, b) => b.satisfactionScore - a.satisfactionScore);
 
   const alertList: Alert[] = alerts.slice(0, 10).map(a => ({
     id: a.id, branchId: a.branch_id, branchName: a.branch_name,
@@ -205,7 +150,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-display font-bold tracking-tight">Tableau de bord</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Vue d'ensemble de la qualité de service · {totalFeedbacks} feedbacks · {branches.length} agences
+            Vue d'ensemble de la qualité de service · {totalFeedbacks} feedbacks · {branchPerformance.length} agences
           </p>
         </div>
         <PeriodSelector onChange={(v) => setPeriod(v as PeriodValue)} />
@@ -213,9 +158,9 @@ export default function Dashboard() {
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Satisfaction globale" value={`${satisfactionPct}%`} icon={Star} trend={satisfactionTrend} subtitle="vs période précédente" colorMode="satisfaction" rawValue={satisfactionPct} />
-        <StatCard title="Total feedbacks" value={totalFeedbacks.toLocaleString()} icon={MessageSquare} trend={feedbacksTrend} subtitle="vs période précédente" />
+        <StatCard title="Total feedbacks" value={totalFeedbacks.toLocaleString()} icon={MessageSquare} subtitle="sur la période" />
         <StatCard title="Alertes actives" value={activeAlerts} icon={AlertTriangle} trend={0} subtitle="alertes non résolues" colorMode="alert" rawValue={activeAlerts} />
-        <StatCard title="Agences actives" value={branches.length} icon={UserCheck} subtitle="connectées" />
+        <StatCard title="Agences actives" value={branchPerformance.length} icon={UserCheck} subtitle="avec feedbacks" />
       </div>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
@@ -228,7 +173,7 @@ export default function Dashboard() {
                 <CardTitle className="text-base font-display">Évolution de la satisfaction</CardTitle>
               </CardHeader>
               <CardContent>
-                <EmptyState type="feedbacks" title="Aucune donnée sur cette période" description="Collectez des feedbacks pour voir l'évolution de la satisfaction par agence." />
+                <EmptyState type="feedbacks" title="Aucune donnée sur cette période" description="Collectez des feedbacks pour voir l'évolution de la satisfaction." />
               </CardContent>
             </Card>
           )}

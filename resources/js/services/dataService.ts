@@ -17,6 +17,10 @@ export interface DbFeedback {
     sentiment: string;
     comment: string | null;
     contact_phone: string | null;
+    customer_name: string | null;
+    customer_email: string | null;
+    customer_phone: string | null;
+    follow_up_responses: any;
     created_at: string;
 }
 
@@ -33,14 +37,16 @@ export interface DbAlert {
 
 export function computeBranchStats(branch: DbBranch, feedbacks: DbFeedback[]) {
     const branchFeedbacks = feedbacks.filter(f => f.branch_id === branch.id);
-    const sentimentScores: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 1 };
+    const sentimentScores: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
     const totalFeedbacks = branchFeedbacks.length;
     const avgScore = totalFeedbacks > 0
         ? branchFeedbacks.reduce((s, f) => s + (sentimentScores[f.sentiment] || 3), 0) / totalFeedbacks
         : 0;
+    const positiveCount = branchFeedbacks.filter(f => f.sentiment === 'happy' || f.sentiment === 'very_happy').length;
     return {
         totalFeedbacks,
         satisfactionScore: Math.round((avgScore / 5) * 100),
+        positiveRate: totalFeedbacks > 0 ? Math.round((positiveCount / totalFeedbacks) * 100) : 0,
     };
 }
 

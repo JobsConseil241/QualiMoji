@@ -27,7 +27,6 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { mockBranches } from '@/data/mockData';
 import UserImportDialog from './UserImportDialog';
 
 /* ---------- types ---------- */
@@ -80,6 +79,7 @@ const emptyForm = {
 export default function UserManagement() {
   const { user } = useAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -91,6 +91,16 @@ export default function UserManagement() {
   const [filterBranch, setFilterBranch] = useState<string>('all');
   const [form, setForm] = useState(emptyForm);
   const [importOpen, setImportOpen] = useState(false);
+
+  const fetchBranches = useCallback(async () => {
+    try {
+      const { data } = await api.get('/branches');
+      const items = data?.branches ?? data?.data ?? (Array.isArray(data) ? data : []);
+      setBranches((items as any[]).map((b: any) => ({ id: b.id, name: b.name })));
+    } catch (err) {
+      console.error('Failed to load branches:', err);
+    }
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     if (!user) return;
@@ -116,9 +126,10 @@ export default function UserManagement() {
   }, []);
 
   useEffect(() => {
+    fetchBranches();
     fetchUsers();
     fetchAuditLogs();
-  }, [fetchUsers, fetchAuditLogs]);
+  }, [fetchBranches, fetchUsers, fetchAuditLogs]);
 
   const handleInvite = async () => {
     if (!form.email.trim()) { toast.error('Veuillez saisir un email'); return; }
@@ -186,7 +197,7 @@ export default function UserManagement() {
     setEditingUserId(u.id);
     setForm({
       full_name: u.full_name,
-      email: u.full_name, // Display only
+      email: u.email,
       role: u.role,
       branch_ids: u.branch_ids,
       is_active: u.is_active,
@@ -317,8 +328,8 @@ export default function UserManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes les agences</SelectItem>
-                  {mockBranches.map(b => (
-                    <SelectItem key={b.id} value={b.id}>{b.name.replace('Agence ', '')}</SelectItem>
+                  {branches.map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -361,7 +372,7 @@ export default function UserManagement() {
                       filteredUsers.map(u => {
                         const rc = ROLE_CONFIG[u.role] || ROLE_CONFIG.branch_manager;
                         const branchNames = u.branch_ids
-                          .map(bid => mockBranches.find(b => b.id === bid)?.name.replace('Agence ', ''))
+                          .map(bid => branches.find(b => b.id === bid)?.name)
                           .filter(Boolean);
 
                         return (
@@ -524,28 +535,36 @@ export default function UserManagement() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {!editingUserId && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Nom complet</Label>
-                    <Input
-                      placeholder="Jean Dupont"
-                      value={form.full_name}
-                      onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Email *</Label>
-                    <Input
-                      type="email"
-                      placeholder="jean@example.com"
-                      value={form.email}
-                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    />
-                  </div>
+            {editingUserId ? (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                  {form.full_name ? form.full_name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2) : '??'}
                 </div>
-              </>
+                <div>
+                  <p className="text-sm font-medium">{form.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{form.email}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Nom complet</Label>
+                  <Input
+                    placeholder="Jean Dupont"
+                    value={form.full_name}
+                    onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Email *</Label>
+                  <Input
+                    type="email"
+                    placeholder="jean@example.com"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
+              </div>
             )}
 
             <div className="space-y-1.5">
@@ -570,7 +589,7 @@ export default function UserManagement() {
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold">Agences assignées</Label>
                   <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
-                    {mockBranches.map(b => (
+                    {branches.map(b => (
                       <label key={b.id} className={cn(
                         'flex items-center gap-2 px-2 py-1.5 rounded-md border cursor-pointer transition-colors text-xs',
                         form.branch_ids.includes(b.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
@@ -579,7 +598,7 @@ export default function UserManagement() {
                           checked={form.branch_ids.includes(b.id)}
                           onCheckedChange={() => toggleBranch(b.id)}
                         />
-                        {b.name.replace('Agence ', '')}
+                        {b.name}
                       </label>
                     ))}
                   </div>

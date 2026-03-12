@@ -27,7 +27,7 @@ export interface Feedback {
   score: number;
   comment: string;
   category: string;
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: 'positive' | 'negative';
   clientName?: string;
   clientEmail?: string;
   clientPhone?: string;

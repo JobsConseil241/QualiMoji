@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { mockBranches } from '@/data/mockData';
+import { fetchBranches } from '@/services/dataService';
 
 interface Schedule {
   id: string;
@@ -56,7 +56,7 @@ const emptySchedule = {
   custom_interval_days: 7,
   recipients: [''],
   include_branches: [] as string[],
-  include_sentiments: ['positive', 'neutral', 'negative'],
+  include_sentiments: ['positive', 'negative'],
   include_global_metrics: true,
   include_branch_detail: true,
   include_feedbacks: true,
@@ -67,6 +67,7 @@ const emptySchedule = {
 export default function ScheduleManager() {
   const { user } = useAuth();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -82,7 +83,15 @@ export default function ScheduleManager() {
     setLoading(false);
   }, [user]);
 
-  useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
+  useEffect(() => {
+    fetchSchedules();
+    (async () => {
+      try {
+        const branchList = await fetchBranches();
+        setBranches((branchList as any[]).map((b: any) => ({ id: b.id, name: b.name })));
+      } catch {}
+    })();
+  }, [fetchSchedules]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -338,7 +347,7 @@ export default function ScheduleManager() {
               </Label>
               <p className="text-[10px] text-muted-foreground">Laissez vide pour toutes les agences</p>
               <div className="grid grid-cols-2 gap-1.5">
-                {mockBranches.map((b) => (
+                {branches.map((b) => (
                   <label key={b.id} className={cn(
                     'flex items-center gap-2 px-2 py-1.5 rounded-md border cursor-pointer transition-colors text-xs',
                     form.include_branches.includes(b.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
@@ -347,7 +356,7 @@ export default function ScheduleManager() {
                       checked={form.include_branches.includes(b.id)}
                       onCheckedChange={() => toggleBranch(b.id)}
                     />
-                    {b.name.replace('Agence ', '')}
+                    {b.name}
                   </label>
                 ))}
               </div>

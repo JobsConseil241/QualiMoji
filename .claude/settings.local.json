@@ -3,7 +3,12 @@
     "allow": [
       "Bash(composer require:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(php -l app/Jobs/SendCustomerWhatsApp.php)",
+      "Bash(php -l app/Http/Controllers/Api/KioskController.php)",
+      "Bash(php -l app/Http/Controllers/Api/BranchController.php)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --connect-timeout 5 https://gate.whapi.cloud)",
+      "Bash(curl -4 -s -w \"\\\\nHTTP_CODE: %{http_code}\\\\n\" --connect-timeout 10 -H \"Authorization: Bearer cBvBqHVJVPUTbV24NLLeaZvqPpX8W2cx\" -H \"Content-Type: application/json\" -d '{\"\"to\"\":\"\"242000000000\"\",\"\"body\"\":\"\"test\"\"}' \"https://gate.whapi.cloud/messages/text\")"
     ]
   }
 }

@@ -21,6 +21,7 @@ Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::prefix('kiosk')->group(function () {
     Route::get('/config/{branchId}', [KioskController::class, 'config']);
     Route::post('/feedback', [FeedbackController::class, 'store']);
+    Route::put('/feedback/{feedback}/contact', [KioskController::class, 'updateContact']);
 });
 
 // ── Authenticated Routes ──

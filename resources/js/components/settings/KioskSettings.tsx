@@ -69,7 +69,13 @@ export default function KioskSettings() {
           soundsEnabled: globalCfg.soundsEnabled ?? globalCfg.sounds_enabled ?? DEFAULTS.soundsEnabled,
           hapticEnabled: globalCfg.hapticEnabled ?? globalCfg.haptic_enabled ?? DEFAULTS.hapticEnabled,
           offlineModeEnabled: globalCfg.offlineModeEnabled ?? globalCfg.offline_mode_enabled ?? DEFAULTS.offlineModeEnabled,
-          screensaverSlides: globalCfg.screensaverSlides ?? globalCfg.screensaver_slides ?? DEFAULTS.screensaverSlides,
+          screensaverSlides: (globalCfg.screensaverSlides ?? globalCfg.screensaver_slides ?? DEFAULTS.screensaverSlides).map((s: any) => ({
+            id: s.id ?? crypto.randomUUID(),
+            imageUrl: s.imageUrl ?? s.image_url ?? '',
+            title: s.title ?? '',
+            subtitle: s.subtitle ?? '',
+            order: s.order ?? 0,
+          })),
           footerText: globalCfg.footerText ?? globalCfg.footer_text ?? DEFAULTS.footerText,
         });
         setBranches(branchList);

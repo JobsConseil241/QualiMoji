@@ -276,11 +276,11 @@ export function buildReportData(
   type: ReportData['type'],
   periodStart: Date,
   periodEnd: Date,
-  mockData: {
-    mockBranches: any[];
-    mockFeedbacks: any[];
-    mockAlerts: any[];
-    mockSentimentData: any[];
+  sourceData: {
+    branches?: any[];
+    stats?: any;
+    feedbacks?: any[];
+    alerts?: any[];
   },
   options?: {
     includeBranches?: boolean;
@@ -291,21 +291,43 @@ export function buildReportData(
     sentiments?: string[];
   }
 ): ReportData {
-  const { mockBranches, mockFeedbacks, mockAlerts, mockSentimentData } = mockData;
+  const allBranches = sourceData.branches ?? [];
+  const allFeedbacks = sourceData.feedbacks ?? [];
+  const allAlerts = sourceData.alerts ?? [];
+  const stats = sourceData.stats ?? {};
 
   const filteredBranches = options?.branchIds?.length
-    ? mockBranches.filter((b: any) => options.branchIds!.includes(b.id))
-    : mockBranches;
+    ? allBranches.filter((b: any) => options.branchIds!.includes(b.id))
+    : allBranches;
 
-  const filteredFeedbacks = mockFeedbacks.filter((f: any) => {
-    if (options?.branchIds?.length && !options.branchIds.includes(f.branchId)) return false;
+  const sentimentScores: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
+  const sentimentLabels: Record<string, string> = { very_happy: 'Très satisfait', happy: 'Satisfait', unhappy: 'Insatisfait', very_unhappy: 'Très insatisfait' };
+
+  const filteredFeedbacks = allFeedbacks.filter((f: any) => {
+    if (options?.branchIds?.length && !options.branchIds.includes(f.branch_id)) return false;
     if (options?.sentiments?.length && !options.sentiments.includes(f.sentiment)) return false;
     return true;
   });
 
   const totalFb = filteredFeedbacks.length;
-  const posCount = filteredFeedbacks.filter((f: any) => f.sentiment === 'positive').length;
-  const negCount = filteredFeedbacks.filter((f: any) => f.sentiment === 'negative').length;
+  const posCount = filteredFeedbacks.filter((f: any) => f.sentiment === 'happy' || f.sentiment === 'very_happy').length;
+  const negCount = filteredFeedbacks.filter((f: any) => f.sentiment === 'unhappy' || f.sentiment === 'very_unhappy').length;
+  const avgScore = totalFb > 0
+    ? filteredFeedbacks.reduce((s: number, f: any) => s + (sentimentScores[f.sentiment] || 3), 0) / totalFb
+    : 0;
+
+  // Build sentiment breakdown from filtered feedbacks
+  const sentimentCounts: Record<string, number> = {};
+  filteredFeedbacks.forEach((f: any) => {
+    sentimentCounts[f.sentiment] = (sentimentCounts[f.sentiment] || 0) + 1;
+  });
+
+  // Build branch stats from feedbacks
+  const branchFbMap: Record<string, any[]> = {};
+  filteredFeedbacks.forEach((f: any) => {
+    if (!branchFbMap[f.branch_id]) branchFbMap[f.branch_id] = [];
+    branchFbMap[f.branch_id].push(f);
+  });
 
   return {
     title,
@@ -314,44 +336,51 @@ export function buildReportData(
     generatedAt: new Date(),
     summary: {
       totalFeedbacks: totalFb,
-      averageSatisfaction: 4.2,
-      satisfactionTrend: 3.5,
-      totalAlerts: mockAlerts.length,
+      averageSatisfaction: Math.round(avgScore * 10) / 10,
+      satisfactionTrend: stats.trend ?? 0,
+      totalAlerts: allAlerts.length,
       positiveRate: totalFb ? Math.round((posCount / totalFb) * 100) : 0,
       negativeRate: totalFb ? Math.round((negCount / totalFb) * 100) : 0,
     },
     branches: options?.includeBranches !== false
-      ? filteredBranches.map((b: any) => ({
-          name: b.name,
-          satisfaction: b.satisfactionScore,
-          feedbacks: b.totalFeedbacks,
-          alerts: b.activeAlerts,
-          trend: b.trendValue || 0,
-        }))
+      ? filteredBranches.map((b: any) => {
+          const bFb = branchFbMap[b.id] || [];
+          const bPos = bFb.filter((f: any) => f.sentiment === 'happy' || f.sentiment === 'very_happy').length;
+          return {
+            name: b.name,
+            satisfaction: bFb.length > 0 ? Math.round((bPos / bFb.length) * 100) : 0,
+            feedbacks: bFb.length,
+            alerts: allAlerts.filter((a: any) => a.branch_id === b.id).length,
+            trend: 0,
+          };
+        })
       : undefined,
     feedbacks: options?.includeFeedbacks !== false
-      ? filteredFeedbacks.map((f: any) => ({
-          date: format(new Date(f.createdAt), 'dd/MM/yyyy'),
-          branch: f.branchName,
-          score: f.score,
-          sentiment: f.sentiment === 'positive' ? 'Positif' : f.sentiment === 'negative' ? 'Négatif' : 'Neutre',
-          comment: f.comment,
-          category: f.category,
-        }))
+      ? filteredFeedbacks.slice(0, 200).map((f: any) => {
+          const branch = allBranches.find((b: any) => b.id === f.branch_id);
+          return {
+            date: format(new Date(f.created_at), 'dd/MM/yyyy'),
+            branch: branch?.name ?? '',
+            score: sentimentScores[f.sentiment] || 3,
+            sentiment: sentimentLabels[f.sentiment] || f.sentiment,
+            comment: f.follow_up_responses?.freeText || f.follow_up_responses?.selectedOptions?.join(', ') || '',
+            category: f.sentiment,
+          };
+        })
       : undefined,
     alerts: options?.includeAlerts !== false
-      ? mockAlerts.map((a: any) => ({
-          date: format(new Date(a.createdAt), 'dd/MM/yyyy'),
-          branch: a.branchName,
+      ? allAlerts.map((a: any) => ({
+          date: format(new Date(a.created_at), 'dd/MM/yyyy'),
+          branch: a.branch_name ?? '',
           type: a.type === 'critical' ? 'Critique' : a.type === 'warning' ? 'Attention' : 'Info',
           message: a.message,
-          status: a.isRead ? 'Lu' : 'Non lu',
+          status: a.is_read ? 'Lu' : 'Non lu',
         }))
       : undefined,
-    sentimentBreakdown: mockSentimentData.map((s: any) => ({
-      label: s.name,
-      count: s.value,
-      percentage: Math.round((s.value / mockSentimentData.reduce((acc: number, x: any) => acc + x.value, 0)) * 100),
+    sentimentBreakdown: Object.entries(sentimentCounts).map(([sentiment, count]) => ({
+      label: sentimentLabels[sentiment] || sentiment,
+      count,
+      percentage: totalFb > 0 ? Math.round((count / totalFb) * 100) : 0,
     })),
   };
 }

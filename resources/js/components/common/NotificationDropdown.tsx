@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bell, Check, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { mockAlerts } from '@/data/mockData';
+import { fetchAlerts, markAlertAsRead as apiMarkRead, markAllAlertsAsRead as apiMarkAll } from '@/services/dataService';
 import type { Alert } from '@/types';
 
 const iconMap = {
@@ -22,10 +22,30 @@ const colorMap = {
 
 export function NotificationDropdown() {
   const [open, setOpen] = useState(false);
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
   const unreadCount = alerts.filter((a) => !a.isRead).length;
+
+  const loadAlerts = useCallback(async () => {
+    try {
+      const data = await fetchAlerts({ per_page: 10 });
+      const items = Array.isArray(data) ? data : [];
+      setAlerts(items.map((a: any) => ({
+        id: a.id,
+        branchId: a.branch_id,
+        branchName: a.branch_name,
+        type: a.type as Alert['type'],
+        message: a.message,
+        isRead: a.is_read,
+        createdAt: a.created_at,
+      })));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadAlerts();
+  }, [loadAlerts]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -37,12 +57,14 @@ export function NotificationDropdown() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: true } : a)));
+    try { await apiMarkRead(id); } catch {}
   };
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
     setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })));
+    try { await apiMarkAll(); } catch {}
   };
 
   return (
