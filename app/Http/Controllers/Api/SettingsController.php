@@ -289,7 +289,7 @@ class SettingsController extends Controller
         ]);
 
         $path = $request->file('logo')->store('logos', 'public');
-        $url = asset('storage/' . $path);
+        $url = '/storage/' . $path;
 
         $org = $request->user()->organization;
         $org->update(['logo_url' => $url]);
@@ -304,7 +304,7 @@ class SettingsController extends Controller
         ]);
 
         $path = $request->file('file')->store('kiosk-slides', 'public');
-        $url = asset('storage/' . $path);
+        $url = '/storage/' . $path;
 
         return response()->json(['url' => $url]);
     }

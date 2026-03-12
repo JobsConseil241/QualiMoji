@@ -32,6 +32,7 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
   }, [onDismiss]);
 
   const slide = activeSlides[currentIndex];
+  const hasImage = !!slide.imageUrl;
 
   return (
     <div
@@ -42,62 +43,57 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
       tabIndex={0}
       aria-label="Touchez pour commencer"
     >
-      {/* Background gradient */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: primaryColor
-            ? `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 40%, ${primaryColor}99 100%)`
-            : 'linear-gradient(135deg, hsl(199 89% 36%) 0%, hsl(199 89% 28%) 40%, hsl(215 25% 12%) 100%)',
-        }}
-      />
-
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.id}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="relative z-10 flex flex-col items-center justify-center h-full px-8 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="absolute inset-0"
         >
-          {slide.imageUrl && (
+          {/* Full-screen background: image or gradient */}
+          {hasImage ? (
             <img
               src={slide.imageUrl}
               alt=""
-              className="max-h-[30vh] object-contain mb-8 rounded-2xl"
+              className="absolute inset-0 w-full h-full object-cover"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{
+                background: primaryColor
+                  ? `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 40%, ${primaryColor}99 100%)`
+                  : 'linear-gradient(135deg, hsl(199 89% 36%) 0%, hsl(199 89% 28%) 40%, hsl(215 25% 12%) 100%)',
+              }}
+            />
           )}
-          {slide.title && (
-            <h1 className="text-5xl md:text-7xl font-display font-bold text-white mb-4 drop-shadow-lg">
-              {slide.title}
-            </h1>
+
+          {/* Dark overlay for readability on images */}
+          {hasImage && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
           )}
-          {slide.subtitle && (
-            <p className="text-xl md:text-2xl text-white/80 max-w-2xl drop-shadow">
-              {slide.subtitle}
-            </p>
-          )}
+
+          {/* Content pinned to bottom */}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center px-8 pb-32">
+            {slide.title && (
+              <h1 className="text-5xl md:text-7xl font-display font-bold text-white mb-3 drop-shadow-lg text-center">
+                {slide.title}
+              </h1>
+            )}
+            {slide.subtitle && (
+              <p className="text-xl md:text-2xl text-white/80 max-w-2xl drop-shadow text-center">
+                {slide.subtitle}
+              </p>
+            )}
+          </div>
         </motion.div>
       </AnimatePresence>
 
-      {/* Dots indicator */}
-      {activeSlides.length > 1 && (
-        <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-20">
-          {activeSlides.map((_, i) => (
-            <div
-              key={i}
-              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                i === currentIndex ? 'bg-white scale-125' : 'bg-white/40'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
       {/* Tap hint animation */}
-      <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center gap-3 z-20">
+      <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-3 z-20">
         <motion.div
           animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.8, 0.4] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -114,7 +110,7 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           className="text-lg text-white/70 font-medium"
         >
-          Touchez l'écran pour commencer
+          Touchez l'écran
         </motion.p>
       </div>
     </div>
