@@ -58,7 +58,7 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
       {/* Previous slide background (stays visible during crossfade) */}
       <div className="absolute inset-0">
         {prevHasImage ? (
-          <img src={prevSlide.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={prevSlide.imageUrl} alt="" className="absolute inset-0 w-full h-full object-contain bg-black" />
         ) : (
           <div className="absolute inset-0" style={gradientStyle} />
         )}
@@ -78,7 +78,7 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
             <img
               src={slide.imageUrl}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain bg-black"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           ) : (
