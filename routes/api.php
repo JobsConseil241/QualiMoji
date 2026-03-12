@@ -17,6 +17,9 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
 
+// ── Public Branding ──
+Route::get('/branding', [SettingsController::class, 'publicBranding']);
+
 // ── Public Kiosk Routes ──
 Route::prefix('kiosk')->group(function () {
     Route::get('/config/{branchId}', [KioskController::class, 'config']);

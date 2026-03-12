@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import api from '@/lib/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -17,9 +18,14 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
+  const [branding, setBranding] = useState<{ name: string; logo_url: string | null }>({ name: '', logo_url: null });
   const { login, resetPassword, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    api.get('/branding').then(({ data }) => setBranding(data)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -69,10 +75,19 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <Card className="w-full max-w-md glass-card shadow-xl">
         <CardHeader className="text-center pb-2 pt-8">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/25">
-            <Shield className="h-8 w-8 text-primary-foreground" />
-          </div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">Feedback Rating Solution</h1>
+          {branding.logo_url ? (
+            <img
+              src={branding.logo_url}
+              alt={branding.name}
+              className="mx-auto mb-4 h-16 object-contain"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/25">
+              <Shield className="h-8 w-8 text-primary-foreground" />
+            </div>
+          )}
+          <h1 className="font-display text-2xl font-bold tracking-tight">{branding.name || 'QualiMoji'}</h1>
           <p className="text-sm text-muted-foreground mt-1">Espace Directeur Qualité</p>
         </CardHeader>
         <CardContent className="p-6 pt-4">

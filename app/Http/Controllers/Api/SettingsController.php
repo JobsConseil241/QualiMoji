@@ -13,6 +13,21 @@ use Illuminate\Http\Request;
 
 class SettingsController extends Controller
 {
+    // ── Public Branding (no auth required) ──
+
+    public function publicBranding()
+    {
+        $org = Organization::first();
+        if (!$org) {
+            return response()->json(['name' => 'QualiMoji', 'logo_url' => null]);
+        }
+        return response()->json([
+            'name' => $org->name,
+            'logo_url' => $org->logo_url,
+            'primary_color' => $org->primary_color,
+        ]);
+    }
+
     // ── Question Configs ──
 
     public function getQuestionConfigs(Request $request)
