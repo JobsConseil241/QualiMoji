@@ -146,7 +146,9 @@ function KioskInner() {
 
   // Submit contact info (optional, updates existing feedback via API)
   const handleSubmitContact = async () => {
-    const fullPhone = contactPhone ? `${countryCode}${contactPhone.replace(/^0+/, '')}` : '';
+    const fullPhone = contactPhone
+      ? `${countryCode}${countryCode === '+241' ? contactPhone.replace(/^00+/, '') : contactPhone.replace(/^0+/, '')}`
+      : '';
     if (savedFeedbackId && isOnline && (contactName || contactEmail || fullPhone)) {
       try {
         const { default: api } = await import('@/lib/api');
