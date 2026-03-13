@@ -108,7 +108,7 @@ export function exportToExcel(data: ReportData, filename: string) {
 }
 
 /* ─── PDF ─── */
-export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'monthly' | 'custom') {
+export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'monthly' | 'custom', orgName?: string) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageW = doc.internal.pageSize.getWidth();
   let y = 15;
@@ -119,10 +119,10 @@ export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'mo
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('QualityHub', 15, 15);
+  doc.text(orgName || 'QualiMoji', 15, 15);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('Feedback Rating Solution', 15, 22);
+  doc.text('Rapport Qualité', 15, 22);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(data.title, pageW - 15, 15, { align: 'right' });
@@ -260,7 +260,7 @@ export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'mo
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(
-      `QualityHub — Rapport confidentiel — Page ${i}/${totalPages}`,
+      `${orgName || 'QualiMoji'} — Rapport confidentiel — Page ${i}/${totalPages}`,
       pageW / 2,
       doc.internal.pageSize.getHeight() - 8,
       { align: 'center' }
@@ -306,7 +306,15 @@ export function buildReportData(
   const filteredFeedbacks = allFeedbacks.filter((f: any) => {
     if (options?.branchIds?.length && !options.branchIds.includes(f.branch_id)) return false;
     if (options?.sentiments?.length && !options.sentiments.includes(f.sentiment)) return false;
+    // Filter by date period
+    const fbDate = new Date(f.created_at);
+    if (fbDate < periodStart || fbDate > periodEnd) return false;
     return true;
+  });
+
+  const filteredAlerts2 = allAlerts.filter((a: any) => {
+    const aDate = new Date(a.created_at);
+    return aDate >= periodStart && aDate <= periodEnd;
   });
 
   const totalFb = filteredFeedbacks.length;
@@ -338,7 +346,7 @@ export function buildReportData(
       totalFeedbacks: totalFb,
       averageSatisfaction: Math.round(avgScore * 10) / 10,
       satisfactionTrend: stats.trend ?? 0,
-      totalAlerts: allAlerts.length,
+      totalAlerts: filteredAlerts2.length,
       positiveRate: totalFb ? Math.round((posCount / totalFb) * 100) : 0,
       negativeRate: totalFb ? Math.round((negCount / totalFb) * 100) : 0,
     },
@@ -350,7 +358,7 @@ export function buildReportData(
             name: b.name,
             satisfaction: bFb.length > 0 ? Math.round((bPos / bFb.length) * 100) : 0,
             feedbacks: bFb.length,
-            alerts: allAlerts.filter((a: any) => a.branch_id === b.id).length,
+            alerts: filteredAlerts2.filter((a: any) => a.branch_id === b.id).length,
             trend: 0,
           };
         })
@@ -369,7 +377,7 @@ export function buildReportData(
         })
       : undefined,
     alerts: options?.includeAlerts !== false
-      ? allAlerts.map((a: any) => ({
+      ? filteredAlerts2.map((a: any) => ({
           date: format(new Date(a.created_at), 'dd/MM/yyyy'),
           branch: a.branch_name ?? '',
           type: a.type === 'critical' ? 'Critique' : a.type === 'warning' ? 'Attention' : 'Info',

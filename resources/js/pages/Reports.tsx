@@ -46,7 +46,7 @@ export default function Reports() {
   const [customStart, setCustomStart] = useState<Date>(subDays(new Date(), 30));
   const [customEnd, setCustomEnd] = useState<Date>(new Date());
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
-  const [selectedSentiments, setSelectedSentiments] = useState<string[]>(['positive', 'negative']);
+  const [selectedSentiments, setSelectedSentiments] = useState<string[]>(['very_happy', 'happy', 'unhappy', 'very_unhappy']);
   const [includeGlobalMetrics, setIncludeGlobalMetrics] = useState(true);
   const [includeBranchDetail, setIncludeBranchDetail] = useState(true);
   const [includeFeedbacks, setIncludeFeedbacks] = useState(true);
@@ -54,19 +54,22 @@ export default function Reports() {
   const [includeCharts, setIncludeCharts] = useState(true);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [reportData, setReportData] = useState<any>(null);
+  const [orgName, setOrgName] = useState('');
 
   // Load branches and report data
   useEffect(() => {
     (async () => {
       try {
-        const [branchList, stats, feedbacks, alerts] = await Promise.all([
+        const [branchList, stats, feedbacks, alerts, branding] = await Promise.all([
           fetchBranches(),
           fetchDashboardStats('30d'),
-          fetchFeedbacks({ per_page: 500 }),
-          fetchAlerts({ per_page: 200 }),
+          fetchFeedbacks({ per_page: 2000 }),
+          fetchAlerts({ per_page: 500 }),
+          api.get('/branding').then(r => r.data).catch(() => null),
         ]);
         setBranches((branchList as any[]).map((b: any) => ({ id: b.id, name: b.name })));
         setReportData({ branches: branchList, stats, feedbacks, alerts });
+        if (branding?.name) setOrgName(branding.name);
       } catch {}
     })();
   }, []);
@@ -127,7 +130,7 @@ export default function Reports() {
       if (fmt === 'excel') {
         exportToExcel(data, title.replace(/\s+/g, '_'));
       } else {
-        exportToPDF(data, type);
+        exportToPDF(data, type, orgName);
       }
       addHistory(title, type === 'daily' ? 'Journalier' : type === 'weekly' ? 'Hebdomadaire' : type === 'monthly' ? 'Mensuel' : 'Personnalisé', start, end, fmt);
       toast.success(`${fmt === 'excel' ? 'Excel' : 'PDF'} généré avec succès`, { description: title });
@@ -355,8 +358,10 @@ export default function Reports() {
                 <Label className="text-xs font-semibold">Sentiments à inclure</Label>
                 <div className="flex gap-3">
                   {[
-                    { key: 'positive', label: '😊 Positif', color: 'text-accent' },
-                    { key: 'negative', label: '😞 Négatif', color: 'text-destructive' },
+                    { key: 'very_happy', label: '😄 Très satisfait', color: 'text-accent' },
+                    { key: 'happy', label: '😊 Satisfait', color: 'text-primary' },
+                    { key: 'unhappy', label: '😕 Insatisfait', color: 'text-orange-500' },
+                    { key: 'very_unhappy', label: '😞 Très insatisfait', color: 'text-destructive' },
                   ].map((s) => (
                     <label key={s.key} className={cn(
                       'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-xs',

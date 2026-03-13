@@ -147,7 +147,18 @@ function KioskInner() {
   // Submit contact info (optional, updates existing feedback via API)
   const handleSubmitContact = async () => {
     const fullPhone = contactPhone
-      ? `${countryCode}${countryCode === '+241' ? contactPhone.replace(/^00+/, '') : contactPhone.replace(/^0+/, '')}`
+      ? (() => {
+          const digits = contactPhone.replace(/\s+/g, '');
+          if (countryCode === '+241') {
+            // Gabon: 8 chiffres (ancien format 0XXXXXXX) → garder le 0
+            // 9 chiffres (nouveau format 0[67]XXXXXXX) → enlever le 0
+            const cleaned = digits.replace(/^0/, '');
+            return cleaned.length >= 8
+              ? `${countryCode}${cleaned}`
+              : `${countryCode}${digits}`;
+          }
+          return `${countryCode}${digits.replace(/^0+/, '')}`;
+        })()
       : '';
     if (savedFeedbackId && isOnline && (contactName || contactEmail || fullPhone)) {
       try {

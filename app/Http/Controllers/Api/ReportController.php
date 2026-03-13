@@ -113,7 +113,7 @@ class ReportController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'report_type' => 'required|string',
-            'format' => 'required|string|in:pdf,csv,email',
+            'format' => 'required|string|in:pdf,excel,csv,email',
             'period_start' => 'required|date',
             'period_end' => 'required|date|after_or_equal:period_start',
             'schedule_id' => 'nullable|uuid|exists:report_schedules,id',
