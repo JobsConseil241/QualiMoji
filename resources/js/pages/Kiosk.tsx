@@ -148,15 +148,20 @@ function KioskInner() {
   const handleSubmitContact = async () => {
     const fullPhone = contactPhone
       ? (() => {
-          const digits = contactPhone.replace(/\s+/g, '');
+          // Nettoyer : enlever espaces, tirets, points
+          const digits = contactPhone.replace(/[\s\-\.]/g, '');
           if (countryCode === '+241') {
-            // Gabon: 8 chiffres (ancien format 0XXXXXXX) → garder le 0
-            // 9 chiffres (nouveau format 0[67]XXXXXXX) → enlever le 0
-            const cleaned = digits.replace(/^0/, '');
-            return cleaned.length >= 8
-              ? `${countryCode}${cleaned}`
-              : `${countryCode}${digits}`;
+            // Gabon:
+            // - Ancien format: 0XXXXXXX (8 chiffres total avec le 0) → garder le 0 → +2410XXXXXXX
+            // - Nouveau format: 0[67]XXXXXXXX (9 chiffres total avec le 0) → enlever le 0 → +241[67]XXXXXXXX
+            if (digits.startsWith('0') && digits.length === 9) {
+              // Nouveau format 9 chiffres: enlever le 0
+              return `${countryCode}${digits.substring(1)}`;
+            }
+            // Ancien format 8 chiffres ou sans 0: garder tel quel
+            return `${countryCode}${digits}`;
           }
+          // Autres pays: enlever le 0 initial (convention internationale)
           return `${countryCode}${digits.replace(/^0+/, '')}`;
         })()
       : '';

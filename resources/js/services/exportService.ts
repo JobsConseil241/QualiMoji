@@ -56,18 +56,19 @@ export interface ReportHistoryEntry {
 }
 
 /* ─── Excel ─── */
-export function exportToExcel(data: ReportData, filename: string) {
+export function exportToExcel(data: ReportData, filename: string, orgName?: string) {
   const wb = XLSX.utils.book_new();
 
   // Summary sheet
   const summaryRows = [
+    ['Organisation', orgName || 'QualiMoji'],
     ['Rapport', data.title],
     ['Période', `${format(data.period.start, 'dd/MM/yyyy')} - ${format(data.period.end, 'dd/MM/yyyy')}`],
     ['Généré le', format(data.generatedAt, 'dd/MM/yyyy HH:mm', { locale: fr })],
     [],
     ['RÉSUMÉ'],
     ['Total feedbacks', data.summary.totalFeedbacks],
-    ['Satisfaction moyenne', `${data.summary.averageSatisfaction}/5`],
+    ['Satisfaction moyenne', `${data.summary.averageSatisfaction}%`],
     ['Tendance', `${data.summary.satisfactionTrend > 0 ? '+' : ''}${data.summary.satisfactionTrend}%`],
     ['Alertes', data.summary.totalAlerts],
     ['Taux positif', `${data.summary.positiveRate}%`],
@@ -145,7 +146,7 @@ export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'mo
 
   const summaryItems = [
     ['Total feedbacks', String(data.summary.totalFeedbacks)],
-    ['Satisfaction moyenne', `${data.summary.averageSatisfaction}/5`],
+    ['Satisfaction moyenne', `${data.summary.averageSatisfaction}%`],
     ['Tendance', `${data.summary.satisfactionTrend > 0 ? '+' : ''}${data.summary.satisfactionTrend}%`],
     ['Alertes actives', String(data.summary.totalAlerts)],
     ['Taux positif', `${data.summary.positiveRate}%`],
@@ -195,10 +196,10 @@ export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'mo
 
     autoTable(doc, {
       startY: y,
-      head: [['Agence', 'Score', 'Feedbacks', 'Alertes', 'Tendance']],
+      head: [['Agence', 'Satisfaction', 'Feedbacks', 'Alertes', 'Tendance']],
       body: data.branches.map((b) => [
         b.name,
-        `${b.satisfaction}/5`,
+        `${b.satisfaction}%`,
         String(b.feedbacks),
         String(b.alerts),
         `${b.trend > 0 ? '+' : ''}${b.trend}%`,
@@ -344,7 +345,7 @@ export function buildReportData(
     generatedAt: new Date(),
     summary: {
       totalFeedbacks: totalFb,
-      averageSatisfaction: Math.round(avgScore * 10) / 10,
+      averageSatisfaction: totalFb > 0 ? Math.round((avgScore / 4) * 100) : 0,
       satisfactionTrend: stats.trend ?? 0,
       totalAlerts: filteredAlerts2.length,
       positiveRate: totalFb ? Math.round((posCount / totalFb) * 100) : 0,

@@ -128,7 +128,7 @@ export default function Reports() {
     try {
       const data = buildReportData(title, type, start, end, reportData ?? {}, options);
       if (fmt === 'excel') {
-        exportToExcel(data, title.replace(/\s+/g, '_'));
+        exportToExcel(data, title.replace(/\s+/g, '_'), orgName);
       } else {
         exportToPDF(data, type, orgName);
       }
