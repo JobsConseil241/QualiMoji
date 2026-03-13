@@ -69,8 +69,8 @@ export async function fetchSentimentChart(period: string = '30d') {
     return data.sentiment_counts;
 }
 
-export async function fetchBranches(period: string = '30d', search?: string) {
-    const { data } = await api.get('/branches', { params: { period, search } });
+export async function fetchBranches(period: string = '30d', search?: string, includeInactive?: boolean) {
+    const { data } = await api.get('/branches', { params: { period, search, include_inactive: includeInactive ? 1 : undefined } });
     return data.branches ?? data.data ?? data;
 }
 

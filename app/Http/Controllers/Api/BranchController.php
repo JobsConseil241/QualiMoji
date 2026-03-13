@@ -18,8 +18,12 @@ class BranchController extends Controller
         $user = $request->user();
         $query = Branch::where('organization_id', $user->organization_id);
 
+        // Par défaut, ne retourner que les agences actives
+        // Passer ?include_inactive=1 pour voir toutes les agences (page de gestion)
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
+        } elseif (!$request->boolean('include_inactive')) {
+            $query->where('is_active', true);
         }
 
         if ($request->has('search')) {

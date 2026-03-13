@@ -15,7 +15,7 @@ class KioskController extends Controller
 {
     public function config(Request $request, string $branchId)
     {
-        $branch = Branch::findOrFail($branchId);
+        $branch = Branch::where('id', $branchId)->where('is_active', true)->firstOrFail();
         $org = $branch->organization;
 
         // Get kiosk config (branch-specific or org-level fallback)

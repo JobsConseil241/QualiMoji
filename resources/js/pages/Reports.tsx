@@ -139,7 +139,7 @@ export default function Reports() {
     } finally {
       setGenerating(null);
     }
-  }, [addHistory]);
+  }, [addHistory, reportData, orgName]);
 
   const toggleBranch = (id: string) => {
     setSelectedBranches((prev) => prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]);

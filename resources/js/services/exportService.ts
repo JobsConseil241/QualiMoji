@@ -372,7 +372,7 @@ export function buildReportData(
             branch: branch?.name ?? '',
             score: sentimentScores[f.sentiment] || 3,
             sentiment: sentimentLabels[f.sentiment] || f.sentiment,
-            comment: f.follow_up_responses?.freeText || f.follow_up_responses?.selectedOptions?.join(', ') || '',
+            comment: f.follow_up_responses?.freeText || f.follow_up_responses?.comment || f.follow_up_responses?.selectedOptions?.join(', ') || '',
             category: f.sentiment,
           };
         })

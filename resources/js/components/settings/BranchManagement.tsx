@@ -49,7 +49,7 @@ export default function BranchManagement() {
       const { data: orgData } = await api.get('/settings/organization');
       const org = orgData?.organization ?? orgData;
       if (org?.id) setOrgId(org.id);
-      const { data } = await api.get('/branches');
+      const { data } = await api.get('/branches', { params: { include_inactive: 1 } });
       const items = data?.branches ?? data?.data ?? (Array.isArray(data) ? data : []);
       setBranches(items as BranchRow[]);
     } catch (err) {

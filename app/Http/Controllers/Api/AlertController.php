@@ -110,8 +110,10 @@ class AlertController extends Controller
     private function getUserBranchIds($user)
     {
         if ($user->hasRole('admin') || $user->hasRole('owner')) {
-            return Branch::where('organization_id', $user->organization_id)->pluck('id');
+            return Branch::where('organization_id', $user->organization_id)
+                ->where('is_active', true)
+                ->pluck('id');
         }
-        return $user->branches()->pluck('branches.id');
+        return $user->branches()->where('is_active', true)->pluck('branches.id');
     }
 }

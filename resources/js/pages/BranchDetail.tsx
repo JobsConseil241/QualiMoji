@@ -42,9 +42,9 @@ function sentimentToScore(s: string): number {
 function getComment(f: any): string {
   const resp = f.follow_up_responses;
   if (!resp) return '';
+  if (resp.freeText) return resp.freeText;
   if (resp.comment) return resp.comment;
   if (resp.selectedOptions && Array.isArray(resp.selectedOptions)) return resp.selectedOptions.join(', ');
-  if (resp.freeText) return resp.freeText;
   return '';
 }
 

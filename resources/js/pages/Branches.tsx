@@ -71,7 +71,7 @@ export default function Branches() {
     async function load() {
       setLoading(true);
       try {
-        const branches = await fetchBranches();
+        const branches = await fetchBranches('30d', undefined, true);
 
         const rows: Omit<BranchRow, 'rank'>[] = branches.map((b: any) => {
           const stats = b.stats ?? {};
