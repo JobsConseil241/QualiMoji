@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
-  Users, Plus, Pencil, Ban, Loader2, Mail, Shield, Search, RotateCw, History, Upload,
+  Users, Plus, Pencil, Ban, Loader2, Mail, Shield, Search, RotateCw, History, Upload, KeyRound,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,6 +81,7 @@ const ACTION_LABELS: Record<string, string> = {
 const emptyForm = {
   full_name: '',
   email: '',
+  password: '',
   role: 'branch_director' as string,
   zone_id: '' as string,
   branch_ids: [] as string[],
@@ -155,6 +156,8 @@ export default function UserManagement() {
 
   const handleInvite = async () => {
     if (!form.email.trim()) { toast.error('Veuillez saisir un email'); return; }
+    if (!form.password.trim()) { toast.error('Veuillez définir un mot de passe'); return; }
+    if (form.password.length < 6) { toast.error('Le mot de passe doit contenir au moins 6 caractères'); return; }
     if (!form.role) { toast.error('Veuillez sélectionner un rôle'); return; }
 
     setSaving(true);
@@ -162,6 +165,7 @@ export default function UserManagement() {
       await api.post('/settings/users/invite', {
         email: form.email,
         full_name: form.full_name || form.email,
+        password: form.password,
         role: form.role,
         zone_id: form.role === 'zone_director' ? form.zone_id || undefined : undefined,
         branch_ids: form.role === 'branch_director' ? form.branch_ids : [],
@@ -206,6 +210,20 @@ export default function UserManagement() {
     }
   };
 
+  const resetPassword = async (targetUser: ManagedUser) => {
+    const newPassword = prompt('Nouveau mot de passe pour ' + targetUser.full_name + ' :');
+    if (!newPassword || newPassword.length < 6) {
+      if (newPassword !== null) toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    try {
+      await api.put(`/settings/users/${targetUser.id}`, { password: newPassword, send_credentials: true });
+      toast.success('Mot de passe réinitialisé et email envoyé');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Erreur');
+    }
+  };
+
   const toggleUserActive = async (targetUser: ManagedUser) => {
     if (!user) return;
     const newActive = !targetUser.is_active;
@@ -224,6 +242,7 @@ export default function UserManagement() {
     setForm({
       full_name: u.full_name,
       email: u.email,
+      password: '',
       role: u.role,
       zone_id: u.zone_id || '',
       branch_ids: u.branch_ids,
@@ -457,8 +476,8 @@ export default function UserManagement() {
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(u)} title="Éditer">
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => resendInvite(u)} title="Renvoyer invitation">
-                                  <Mail className="h-3.5 w-3.5" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => resetPassword(u)} title="Réinitialiser le mot de passe">
+                                  <KeyRound className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
                                   variant="ghost" size="icon"
@@ -589,10 +608,21 @@ export default function UserManagement() {
                   placeholder="jean@example.com"
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                  disabled={!editingUserId ? false : undefined}
                 />
               </div>
             </div>
+
+            {!editingUserId && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Mot de passe *</Label>
+                <Input
+                  type="password"
+                  placeholder="Minimum 6 caractères"
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Rôle *</Label>

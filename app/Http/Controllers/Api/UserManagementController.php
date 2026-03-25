@@ -48,7 +48,7 @@ class UserManagementController extends Controller
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'nullable|string|min:8',
+            'password' => 'nullable|string|min:6',
             'full_name' => 'nullable|string|max:255',
             'role' => 'required|string|in:admin,quality_director,zone_director,branch_director,it_admin,viewer',
             'zone_id' => 'nullable|uuid|exists:zones,id',
@@ -144,6 +144,8 @@ class UserManagementController extends Controller
             'name' => 'string|max:255',
             'full_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:6',
+            'send_credentials' => 'nullable|boolean',
             'is_active' => 'boolean',
             'role' => 'nullable|string|in:admin,quality_director,zone_director,branch_director,it_admin,viewer',
             'zone_id' => 'nullable|uuid|exists:zones,id',
@@ -155,7 +157,41 @@ class UserManagementController extends Controller
         if (isset($validated['full_name'])) {
             $updateData['name'] = $validated['full_name'];
         }
+        if (!empty($validated['password'])) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
         $user->update($updateData);
+
+        // Send credentials email if password was reset
+        if (!empty($validated['password']) && !empty($validated['send_credentials'])) {
+            $roleLabels = [
+                'admin' => 'Administrateur',
+                'quality_director' => 'Directeur Qualité',
+                'zone_director' => 'Directeur de Zone',
+                'branch_director' => "Directeur d'Agence",
+                'it_admin' => 'Admin IT',
+                'viewer' => 'Lecteur',
+            ];
+            $org = $request->user()->organization;
+            $orgName = $org?->name ?? 'QualiMoji';
+            $userRole = $user->userRole?->role ?? 'viewer';
+
+            try {
+                Mail::send('emails.user-invitation', [
+                    'orgName' => $orgName,
+                    'fullName' => $user->full_name,
+                    'userEmail' => $user->email,
+                    'tempPassword' => $validated['password'],
+                    'roleLabel' => $roleLabels[$userRole] ?? $userRole,
+                    'loginUrl' => config('app.url') . '/login',
+                ], function ($message) use ($user, $orgName) {
+                    $message->to($user->email)
+                        ->subject("{$orgName} — Vos nouveaux identifiants");
+                });
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to send credentials email to {$user->email}: {$e->getMessage()}");
+            }
+        }
 
         if (isset($validated['role'])) {
             UserRole::updateOrCreate(
