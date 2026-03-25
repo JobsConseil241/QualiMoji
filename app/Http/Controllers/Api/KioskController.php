@@ -54,8 +54,9 @@ class KioskController extends Controller
     {
         $validated = $request->validate([
             'customer_name' => 'nullable|string|max:255',
+            'customer_gender' => 'nullable|string|in:M,F',
             'customer_email' => 'nullable|email|max:255',
-            'customer_phone' => 'nullable|string|max:30',
+            'customer_phone' => 'required|string|max:30',
             'wants_callback' => 'boolean',
         ]);
 

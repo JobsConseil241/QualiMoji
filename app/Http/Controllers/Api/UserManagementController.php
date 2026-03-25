@@ -9,6 +9,8 @@ use App\Models\UserBranchAssignment;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class UserManagementController extends Controller
 {
@@ -34,6 +36,7 @@ class UserManagementController extends Controller
         $users = $query->orderBy('name')->get()->map(function ($u) {
             $data = $u->toArray();
             $data['branch_ids'] = $u->branchAssignments->pluck('branch_id')->values()->toArray();
+            $data['zone_id'] = $u->userRole?->zone_id;
             return $data;
         });
 
@@ -47,18 +50,19 @@ class UserManagementController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'nullable|string|min:8',
             'full_name' => 'nullable|string|max:255',
-            'role' => 'required|string|in:admin,quality_director,branch_manager,it_admin,manager,viewer',
+            'role' => 'required|string|in:admin,quality_director,zone_director,branch_director,it_admin,viewer',
+            'zone_id' => 'nullable|uuid|exists:zones,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'uuid|exists:branches,id',
         ]);
 
         $name = $validated['name'] ?? $validated['full_name'] ?? explode('@', $validated['email'])[0];
-        $password = $validated['password'] ?? Hash::make(\Illuminate\Support\Str::random(32));
+        $tempPassword = $validated['password'] ?? Str::random(10);
 
         $user = User::create([
             'name' => $name,
             'email' => $validated['email'],
-            'password' => is_string($password) && !str_starts_with($password, '$2y$') ? Hash::make($password) : $password,
+            'password' => Hash::make($tempPassword),
             'full_name' => $validated['full_name'] ?? $name,
             'organization_id' => $request->user()->organization_id,
             'is_active' => true,
@@ -67,10 +71,16 @@ class UserManagementController extends Controller
         UserRole::create([
             'user_id' => $user->id,
             'role' => $validated['role'],
+            'zone_id' => $validated['zone_id'] ?? null,
         ]);
 
         if (!empty($validated['branch_ids'])) {
-            foreach ($validated['branch_ids'] as $branchId) {
+            $branchIds = $validated['branch_ids'];
+            // Branch director: max 1 branch
+            if ($validated['role'] === 'branch_director' && count($branchIds) > 1) {
+                $branchIds = [array_shift($branchIds)];
+            }
+            foreach ($branchIds as $branchId) {
                 UserBranchAssignment::create([
                     'user_id' => $user->id,
                     'branch_id' => $branchId,
@@ -87,6 +97,35 @@ class UserManagementController extends Controller
             'details' => ['email' => $user->email, 'full_name' => $user->full_name, 'role' => $validated['role']],
         ]);
 
+        // Send invitation email
+        $roleLabels = [
+            'admin' => 'Administrateur',
+            'quality_director' => 'Directeur Qualité',
+            'zone_director' => 'Directeur de Zone',
+            'branch_director' => "Directeur d'Agence",
+            'it_admin' => 'Admin IT',
+            'viewer' => 'Lecteur',
+        ];
+
+        $org = $request->user()->organization;
+        $orgName = $org?->name ?? 'QualiMoji';
+
+        try {
+            Mail::send('emails.user-invitation', [
+                'orgName' => $orgName,
+                'fullName' => $user->full_name,
+                'userEmail' => $user->email,
+                'tempPassword' => $tempPassword,
+                'roleLabel' => $roleLabels[$validated['role']] ?? $validated['role'],
+                'loginUrl' => config('app.url') . '/login',
+            ], function ($message) use ($user, $orgName) {
+                $message->to($user->email)
+                    ->subject("{$orgName} — Invitation à rejoindre la plateforme");
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send invitation email to {$user->email}: {$e->getMessage()}");
+        }
+
         return response()->json([
             'user' => $user->load('userRole', 'branchAssignments'),
         ], 201);
@@ -99,31 +138,45 @@ class UserManagementController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $managedUser)
+    public function update(Request $request, User $user)
     {
         $validated = $request->validate([
             'name' => 'string|max:255',
             'full_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
             'is_active' => 'boolean',
-            'role' => 'nullable|string|in:admin,quality_director,branch_manager,it_admin,manager,viewer',
+            'role' => 'nullable|string|in:admin,quality_director,zone_director,branch_director,it_admin,viewer',
+            'zone_id' => 'nullable|uuid|exists:zones,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'uuid|exists:branches,id',
         ]);
 
-        $managedUser->update(collect($validated)->only(['name', 'full_name', 'is_active'])->toArray());
+        $updateData = collect($validated)->only(['name', 'full_name', 'email', 'is_active'])->filter()->toArray();
+        if (isset($validated['full_name'])) {
+            $updateData['name'] = $validated['full_name'];
+        }
+        $user->update($updateData);
 
         if (isset($validated['role'])) {
             UserRole::updateOrCreate(
-                ['user_id' => $managedUser->id],
-                ['role' => $validated['role']]
+                ['user_id' => $user->id],
+                ['role' => $validated['role'], 'zone_id' => $validated['zone_id'] ?? null]
             );
         }
 
         if (isset($validated['branch_ids'])) {
-            UserBranchAssignment::where('user_id', $managedUser->id)->delete();
-            foreach ($validated['branch_ids'] as $branchId) {
+            $role = $validated['role'] ?? $user->userRole?->role;
+            $branchIds = $validated['branch_ids'];
+
+            // Branch director: max 1 branch
+            if ($role === 'branch_director' && count($branchIds) > 1) {
+                $branchIds = [array_shift($branchIds)];
+            }
+
+            UserBranchAssignment::where('user_id', $user->id)->delete();
+            foreach ($branchIds as $branchId) {
                 UserBranchAssignment::create([
-                    'user_id' => $managedUser->id,
+                    'user_id' => $user->id,
                     'branch_id' => $branchId,
                 ]);
             }
@@ -142,27 +195,27 @@ class UserManagementController extends Controller
             'actor_email' => $request->user()->email,
             'action' => $action,
             'target_type' => 'user',
-            'target_id' => (string) $managedUser->id,
-            'details' => ['email' => $managedUser->email, 'full_name' => $managedUser->full_name, ...$validated],
+            'target_id' => (string) $user->id,
+            'details' => ['email' => $user->email, 'full_name' => $user->full_name, ...$validated],
         ]);
 
         return response()->json([
-            'user' => $managedUser->fresh()->load('userRole', 'branchAssignments'),
+            'user' => $user->fresh()->load('userRole', 'branchAssignments'),
         ]);
     }
 
-    public function destroy(Request $request, User $managedUser)
+    public function destroy(Request $request, User $user)
     {
         AuditLog::create([
             'actor_id' => $request->user()->id,
             'actor_email' => $request->user()->email,
             'action' => 'user.deleted',
             'target_type' => 'user',
-            'target_id' => (string) $managedUser->id,
-            'details' => ['email' => $managedUser->email],
+            'target_id' => (string) $user->id,
+            'details' => ['email' => $user->email],
         ]);
 
-        $managedUser->delete();
+        $user->delete();
 
         return response()->json(['message' => 'User deleted successfully']);
     }

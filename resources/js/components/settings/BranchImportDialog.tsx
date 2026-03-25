@@ -17,6 +17,7 @@ interface ParsedBranch {
   city: string;
   region: string;
   address: string;
+  zone: string;
   status: 'valid' | 'error' | 'duplicate';
   error?: string;
 }
@@ -34,6 +35,7 @@ const COLUMN_MAP: Record<string, keyof ParsedBranch> = {
   ville: 'city', city: 'city',
   region: 'region', région: 'region', province: 'region',
   adresse: 'address', address: 'address',
+  zone: 'zone',
 };
 
 function normalise(key: string): keyof ParsedBranch | null {
@@ -70,7 +72,7 @@ export default function BranchImportDialog({ open, onOpenChange, orgId, existing
         const seenNames = new Set<string>();
 
         const parsed: ParsedBranch[] = json.map((row) => {
-          const mapped: any = { name: '', city: '', region: '', address: '', status: 'valid' };
+          const mapped: any = { name: '', city: '', region: '', address: '', zone: '', status: 'valid' };
           for (const [key, val] of Object.entries(row)) {
             const field = normalise(key);
             if (field && field !== 'status' && field !== 'error') mapped[field] = String(val).trim();
@@ -108,6 +110,7 @@ export default function BranchImportDialog({ open, onOpenChange, orgId, existing
       city: r.city || null,
       region: r.region || null,
       address: r.address || null,
+      zone: r.zone || null,
     }));
 
     try {
@@ -125,9 +128,11 @@ export default function BranchImportDialog({ open, onOpenChange, orgId, existing
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['nom', 'ville', 'province', 'adresse'],
-      ['Agence Exemple', 'Casablanca', 'Grand Casablanca', '12 Rue Exemple'],
+      ['nom', 'ville', 'province', 'adresse', 'zone'],
+      ['Agence Paris Centre', 'Paris', 'Île-de-France', '12 Rue Exemple', 'Zone Nord'],
+      ['Agence Marseille', 'Marseille', 'PACA', '45 Boulevard Sud', 'Zone Sud'],
     ]);
+    ws['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Agences');
     XLSX.writeFile(wb, 'modele_agences.xlsx');
@@ -139,7 +144,7 @@ export default function BranchImportDialog({ open, onOpenChange, orgId, existing
         <DialogHeader>
           <DialogTitle>Importer des agences</DialogTitle>
           <DialogDescription>
-            Importez un fichier CSV ou Excel avec les colonnes : nom, ville, province, adresse
+            Importez un fichier CSV ou Excel avec les colonnes : nom, ville, province, adresse, zone
           </DialogDescription>
         </DialogHeader>
 
@@ -182,6 +187,7 @@ export default function BranchImportDialog({ open, onOpenChange, orgId, existing
                         <TableHead className="text-xs">Ville</TableHead>
                         <TableHead className="text-xs">Province</TableHead>
                         <TableHead className="text-xs">Adresse</TableHead>
+                        <TableHead className="text-xs">Zone</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -201,6 +207,7 @@ export default function BranchImportDialog({ open, onOpenChange, orgId, existing
                           <TableCell className="text-xs">{r.city || '—'}</TableCell>
                           <TableCell className="text-xs">{r.region || '—'}</TableCell>
                           <TableCell className="text-xs">{r.address || '—'}</TableCell>
+                          <TableCell className="text-xs">{r.zone || '—'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

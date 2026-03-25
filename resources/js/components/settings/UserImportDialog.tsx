@@ -11,13 +11,15 @@ import {
 import api from '@/lib/api';
 import { toast } from 'sonner';
 
-const VALID_ROLES = ['admin', 'quality_director', 'branch_manager', 'it_admin'];
+const VALID_ROLES = ['admin', 'quality_director', 'zone_director', 'branch_director', 'it_admin', 'viewer'];
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin',
+  admin: 'Administrateur',
   quality_director: 'Dir. Qualité',
-  branch_manager: 'Resp. Agence',
+  zone_director: 'Dir. de Zone',
+  branch_director: "Dir. d'Agence",
   it_admin: 'Admin IT',
+  viewer: 'Lecteur',
 };
 
 interface ParsedUser {
@@ -74,7 +76,7 @@ export default function UserImportDialog({ open, onOpenChange, onImported }: Pro
         const seenEmails = new Set<string>();
 
         const parsed: ParsedUser[] = json.map((row) => {
-          const mapped: any = { email: '', name: '', role: 'branch_manager', branches: '', status: 'valid' };
+          const mapped: any = { email: '', name: '', role: 'branch_director', branches: '', status: 'valid' };
           for (const [key, val] of Object.entries(row)) {
             const field = normalise(key);
             if (field) mapped[field] = String(val).trim();
@@ -124,7 +126,7 @@ export default function UserImportDialog({ open, onOpenChange, onImported }: Pro
         await api.post('/settings/users/invite', {
           email: r.email,
           full_name: r.name,
-          role: r.role || 'branch_manager',
+          role: r.role || 'branch_director',
           branch_ids: [], // Branch matching by name would need lookup — keeping simple
         });
         ok++;
@@ -142,11 +144,29 @@ export default function UserImportDialog({ open, onOpenChange, onImported }: Pro
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
       ['email', 'nom', 'role', 'agences'],
-      ['jean@example.com', 'Jean Dupont', 'branch_manager', 'Agence A;Agence B'],
+      ['jean@example.com', 'Jean Dupont', 'branch_director', 'Agence Paris Centre'],
+      ['marc@example.com', 'Marc Ndong', 'zone_director', ''],
       ['admin@example.com', 'Marie Admin', 'admin', ''],
+      ['it@example.com', 'Paul IT', 'it_admin', ''],
     ]);
+    // Auto-size columns
+    ws['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 18 }, { wch: 25 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Utilisateurs');
+
+    // Add a "Rôles" reference sheet
+    const rolesWs = XLSX.utils.aoa_to_sheet([
+      ['Code rôle', 'Description'],
+      ['admin', 'Administrateur - Accès complet'],
+      ['quality_director', 'Directeur Qualité - Dashboard, rapports, KPIs'],
+      ['zone_director', 'Directeur de Zone - Supervise les agences de sa zone'],
+      ['branch_director', "Directeur d'Agence - Gère une seule agence"],
+      ['it_admin', 'Admin IT - Gestion technique'],
+      ['viewer', 'Lecteur - Consultation uniquement'],
+    ]);
+    rolesWs['!cols'] = [{ wch: 20 }, { wch: 50 }];
+    XLSX.utils.book_append_sheet(wb, rolesWs, 'Rôles');
+
     XLSX.writeFile(wb, 'modele_utilisateurs.xlsx');
   };
 

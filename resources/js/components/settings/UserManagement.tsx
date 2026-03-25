@@ -40,6 +40,15 @@ interface ManagedUser {
   last_sign_in_at: string | null;
   created_at: string;
   branch_ids: string[];
+  zone_id: string | null;
+}
+
+interface Zone {
+  id: string;
+  name: string;
+  description: string | null;
+  branches_count: number;
+  active_branches_count: number;
 }
 
 interface AuditLog {
@@ -53,9 +62,10 @@ interface AuditLog {
 }
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; description: string }> = {
-  admin: { label: 'Administrateur', color: 'bg-destructive/10 text-destructive border-destructive/20', description: 'Accès complet' },
+  admin: { label: 'Administrateur', color: 'bg-destructive/10 text-destructive border-destructive/20', description: 'Accès complet à toute la plateforme' },
   quality_director: { label: 'Directeur Qualité', color: 'bg-primary/10 text-primary border-primary/20', description: 'Dashboard, agences, alertes, rapports, paramètres KPI/Questions' },
-  branch_manager: { label: 'Responsable Agence', color: 'bg-accent/10 text-accent-foreground border-accent/20', description: 'Données de ses agences uniquement' },
+  zone_director: { label: 'Directeur de Zone', color: 'bg-violet-500/10 text-violet-600 border-violet-500/20', description: 'Supervise toutes les agences de sa zone géographique' },
+  branch_director: { label: "Directeur d'Agence", color: 'bg-blue-500/10 text-blue-600 border-blue-500/20', description: 'Gère une seule agence' },
   it_admin: { label: 'Admin IT', color: 'bg-warning/10 text-warning border-warning/20', description: 'Gestion utilisateurs, système, logs' },
 };
 
@@ -71,7 +81,8 @@ const ACTION_LABELS: Record<string, string> = {
 const emptyForm = {
   full_name: '',
   email: '',
-  role: 'branch_manager' as string,
+  role: 'branch_director' as string,
+  zone_id: '' as string,
   branch_ids: [] as string[],
   is_active: true,
 };
@@ -79,7 +90,8 @@ const emptyForm = {
 export default function UserManagement() {
   const { user } = useAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string; zone_id?: string }[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -94,9 +106,9 @@ export default function UserManagement() {
 
   const fetchBranches = useCallback(async () => {
     try {
-      const { data } = await api.get('/branches');
+      const { data } = await api.get('/branches', { params: { include_inactive: 1 } });
       const items = data?.branches ?? data?.data ?? (Array.isArray(data) ? data : []);
-      setBranches((items as any[]).map((b: any) => ({ id: b.id, name: b.name })));
+      setBranches((items as any[]).map((b: any) => ({ id: b.id, name: b.name, zone_id: b.zone_id })));
     } catch (err) {
       console.error('Failed to load branches:', err);
     }
@@ -115,6 +127,15 @@ export default function UserManagement() {
     setLoading(false);
   }, [user]);
 
+  const fetchZones = useCallback(async () => {
+    try {
+      const { data } = await api.get('/zones');
+      setZones(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load zones:', err);
+    }
+  }, []);
+
   const fetchAuditLogs = useCallback(async () => {
     try {
       const { data } = await api.get('/settings/audit-logs', { params: { limit: 100 } });
@@ -128,8 +149,9 @@ export default function UserManagement() {
   useEffect(() => {
     fetchBranches();
     fetchUsers();
+    fetchZones();
     fetchAuditLogs();
-  }, [fetchBranches, fetchUsers, fetchAuditLogs]);
+  }, [fetchBranches, fetchUsers, fetchZones, fetchAuditLogs]);
 
   const handleInvite = async () => {
     if (!form.email.trim()) { toast.error('Veuillez saisir un email'); return; }
@@ -141,7 +163,8 @@ export default function UserManagement() {
         email: form.email,
         full_name: form.full_name || form.email,
         role: form.role,
-        branch_ids: form.role === 'branch_manager' ? form.branch_ids : [],
+        zone_id: form.role === 'zone_director' ? form.zone_id || undefined : undefined,
+        branch_ids: form.role === 'branch_director' ? form.branch_ids : [],
       });
 
       toast.success('Invitation envoyée avec succès');
@@ -162,8 +185,11 @@ export default function UserManagement() {
     setSaving(true);
     try {
       await api.put(`/settings/users/${editingUserId}`, {
+        full_name: form.full_name,
+        email: form.email,
         role: form.role,
-        branch_ids: form.role === 'branch_manager' ? form.branch_ids : [],
+        zone_id: form.role === 'zone_director' ? form.zone_id || undefined : undefined,
+        branch_ids: form.role === 'branch_director' ? form.branch_ids : [],
         is_active: form.is_active,
       });
 
@@ -199,6 +225,7 @@ export default function UserManagement() {
       full_name: u.full_name,
       email: u.email,
       role: u.role,
+      zone_id: u.zone_id || '',
       branch_ids: u.branch_ids,
       is_active: u.is_active,
     });
@@ -355,7 +382,7 @@ export default function UserManagement() {
                       <TableHead className="text-xs w-10"></TableHead>
                       <TableHead className="text-xs">Nom</TableHead>
                       <TableHead className="text-xs">Rôle</TableHead>
-                      <TableHead className="text-xs">Agences</TableHead>
+                      <TableHead className="text-xs">Zone / Agences</TableHead>
                       <TableHead className="text-xs">Statut</TableHead>
                       <TableHead className="text-xs">Dernière connexion</TableHead>
                       <TableHead className="text-xs text-right">Actions</TableHead>
@@ -370,7 +397,7 @@ export default function UserManagement() {
                       </TableRow>
                     ) : (
                       filteredUsers.map(u => {
-                        const rc = ROLE_CONFIG[u.role] || ROLE_CONFIG.branch_manager;
+                        const rc = ROLE_CONFIG[u.role] || ROLE_CONFIG.branch_director;
                         const branchNames = u.branch_ids
                           .map(bid => branches.find(b => b.id === bid)?.name)
                           .filter(Boolean);
@@ -392,7 +419,18 @@ export default function UserManagement() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {branchNames.length > 0 ? (
+                              {u.role === 'zone_director' && u.zone_id ? (
+                                <div className="space-y-1">
+                                  <Badge variant="secondary" className="text-[10px] bg-violet-500/10 text-violet-600">
+                                    {zones.find(z => z.id === u.zone_id)?.name || 'Zone'}
+                                  </Badge>
+                                  <div className="flex flex-wrap gap-1">
+                                    {branches.filter(b => b.zone_id === u.zone_id).map(b => (
+                                      <Badge key={b.id} variant="outline" className="text-[9px] text-muted-foreground">{b.name}</Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : branchNames.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                   {branchNames.map((n, i) => (
                                     <Badge key={i} variant="secondary" className="text-[10px]">{n}</Badge>
@@ -400,7 +438,7 @@ export default function UserManagement() {
                                 </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground">
-                                  {u.role === 'branch_manager' ? 'Non assigné' : '—'}
+                                  {u.role === 'branch_director' ? 'Non assigné' : '—'}
                                 </span>
                               )}
                             </TableCell>
@@ -535,37 +573,26 @@ export default function UserManagement() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {editingUserId ? (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                  {form.full_name ? form.full_name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2) : '??'}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{form.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{form.email}</p>
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Nom complet</Label>
+                <Input
+                  placeholder="Jean Dupont"
+                  value={form.full_name}
+                  onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Nom complet</Label>
-                  <Input
-                    placeholder="Jean Dupont"
-                    value={form.full_name}
-                    onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Email *</Label>
-                  <Input
-                    type="email"
-                    placeholder="jean@example.com"
-                    value={form.email}
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Email *</Label>
+                <Input
+                  type="email"
+                  placeholder="jean@example.com"
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  disabled={!editingUserId ? false : undefined}
+                />
               </div>
-            )}
+            </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Rôle *</Label>
@@ -583,28 +610,42 @@ export default function UserManagement() {
               </Select>
             </div>
 
-            {form.role === 'branch_manager' && (
+            {form.role === 'zone_director' && (
               <>
                 <Separator />
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Agences assignées</Label>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
-                    {branches.map(b => (
-                      <label key={b.id} className={cn(
-                        'flex items-center gap-2 px-2 py-1.5 rounded-md border cursor-pointer transition-colors text-xs',
-                        form.branch_ids.includes(b.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
-                      )}>
-                        <Checkbox
-                          checked={form.branch_ids.includes(b.id)}
-                          onCheckedChange={() => toggleBranch(b.id)}
-                        />
-                        {b.name}
-                      </label>
-                    ))}
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Zone assignée *</Label>
+                  <Select value={form.zone_id} onValueChange={v => setForm(f => ({ ...f, zone_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionner une zone" /></SelectTrigger>
+                    <SelectContent>
+                      {zones.map(z => (
+                        <SelectItem key={z.id} value={z.id}>
+                          {z.name} ({z.active_branches_count} agence{z.active_branches_count > 1 ? 's' : ''})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </>
             )}
+
+            {form.role === 'branch_director' && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Agence dirigée *</Label>
+                  <Select value={form.branch_ids[0] || ''} onValueChange={v => setForm(f => ({ ...f, branch_ids: [v] }))}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionner une agence" /></SelectTrigger>
+                    <SelectContent>
+                      {branches.map(b => (
+                        <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
 
             {editingUserId && (
               <>

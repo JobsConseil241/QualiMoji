@@ -80,19 +80,35 @@ export function exportToExcel(data: ReportData, filename: string, orgName?: stri
 
   // Branches sheet
   if (data.branches?.length) {
-    const branchHeader = ['Agence', 'Satisfaction', 'Feedbacks', 'Alertes', 'Tendance (%)'];
-    const branchRows = data.branches.map((b) => [b.name, b.satisfaction, b.feedbacks, b.alerts, b.trend]);
+    const hasZone = data.branches.some((b: any) => b.zone);
+    const branchHeader = hasZone
+      ? ['Zone', 'Agence', 'Satisfaction', 'Feedbacks', 'Alertes', 'Tendance (%)']
+      : ['Agence', 'Satisfaction', 'Feedbacks', 'Alertes', 'Tendance (%)'];
+    const branchRows = data.branches.map((b: any) => hasZone
+      ? [b.zone || '—', b.name, `${b.satisfaction}%`, b.feedbacks, b.alerts, b.trend]
+      : [b.name, `${b.satisfaction}%`, b.feedbacks, b.alerts, b.trend]
+    );
     const wsBranches = XLSX.utils.aoa_to_sheet([branchHeader, ...branchRows]);
-    wsBranches['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
+    wsBranches['!cols'] = hasZone
+      ? [{ wch: 18 }, { wch: 30 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }]
+      : [{ wch: 30 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, wsBranches, 'Agences');
   }
 
   // Feedbacks sheet
   if (data.feedbacks?.length) {
-    const fbHeader = ['Date', 'Agence', 'Score', 'Sentiment', 'Catégorie', 'Commentaire'];
-    const fbRows = data.feedbacks.map((f) => [f.date, f.branch, f.score, f.sentiment, f.category, f.comment]);
+    const hasZone = data.feedbacks.some((f: any) => f.zone);
+    const fbHeader = hasZone
+      ? ['Date', 'Zone', 'Agence', 'Score', 'Sentiment', 'Catégorie', 'Commentaire']
+      : ['Date', 'Agence', 'Score', 'Sentiment', 'Catégorie', 'Commentaire'];
+    const fbRows = data.feedbacks.map((f: any) => hasZone
+      ? [f.date, f.zone || '—', f.branch, f.score, f.sentiment, f.category, f.comment]
+      : [f.date, f.branch, f.score, f.sentiment, f.category, f.comment]
+    );
     const wsFb = XLSX.utils.aoa_to_sheet([fbHeader, ...fbRows]);
-    wsFb['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 50 }];
+    wsFb['!cols'] = hasZone
+      ? [{ wch: 12 }, { wch: 18 }, { wch: 28 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 50 }]
+      : [{ wch: 12 }, { wch: 28 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 50 }];
     XLSX.utils.book_append_sheet(wb, wsFb, 'Feedbacks');
   }
 
@@ -194,16 +210,17 @@ export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'mo
     doc.text('Détail par agence', 15, y);
     y += 8;
 
+    const bHasZone = data.branches.some((b: any) => b.zone);
     autoTable(doc, {
       startY: y,
-      head: [['Agence', 'Satisfaction', 'Feedbacks', 'Alertes', 'Tendance']],
-      body: data.branches.map((b) => [
-        b.name,
-        `${b.satisfaction}%`,
-        String(b.feedbacks),
-        String(b.alerts),
-        `${b.trend > 0 ? '+' : ''}${b.trend}%`,
-      ]),
+      head: [bHasZone
+        ? ['Zone', 'Agence', 'Satisfaction', 'Feedbacks', 'Alertes', 'Tendance']
+        : ['Agence', 'Satisfaction', 'Feedbacks', 'Alertes', 'Tendance']
+      ],
+      body: data.branches.map((b: any) => bHasZone
+        ? [b.zone || '—', b.name, `${b.satisfaction}%`, String(b.feedbacks), String(b.alerts), `${b.trend > 0 ? '+' : ''}${b.trend}%`]
+        : [b.name, `${b.satisfaction}%`, String(b.feedbacks), String(b.alerts), `${b.trend > 0 ? '+' : ''}${b.trend}%`]
+      ),
       theme: 'striped',
       headStyles: { fillColor: [14, 116, 144], fontSize: 9 },
       bodyStyles: { fontSize: 8 },
@@ -221,15 +238,22 @@ export function exportToPDF(data: ReportData, template: 'daily' | 'weekly' | 'mo
     doc.text('Liste des feedbacks', 15, y);
     y += 8;
 
+    const fHasZone = data.feedbacks.some((f: any) => f.zone);
     autoTable(doc, {
       startY: y,
-      head: [['Date', 'Agence', 'Score', 'Sentiment', 'Commentaire']],
-      body: data.feedbacks.slice(0, 50).map((f) => [f.date, f.branch, String(f.score), f.sentiment, f.comment.substring(0, 80)]),
+      head: [fHasZone
+        ? ['Date', 'Zone', 'Agence', 'Score', 'Sentiment', 'Commentaire']
+        : ['Date', 'Agence', 'Score', 'Sentiment', 'Commentaire']
+      ],
+      body: data.feedbacks.slice(0, 50).map((f: any) => fHasZone
+        ? [f.date, f.zone || '—', f.branch, String(f.score), f.sentiment, f.comment.substring(0, 80)]
+        : [f.date, f.branch, String(f.score), f.sentiment, f.comment.substring(0, 80)]
+      ),
       theme: 'striped',
       headStyles: { fillColor: [14, 116, 144], fontSize: 8 },
       bodyStyles: { fontSize: 7 },
       margin: { left: 15, right: 15 },
-      columnStyles: { 4: { cellWidth: 60 } },
+      columnStyles: fHasZone ? { 5: { cellWidth: 50 } } : { 4: { cellWidth: 60 } },
     });
 
     y = (doc as any).lastAutoTable.finalY + 12;
@@ -282,6 +306,7 @@ export function buildReportData(
     stats?: any;
     feedbacks?: any[];
     alerts?: any[];
+    zones?: any[];
   },
   options?: {
     includeBranches?: boolean;
@@ -295,7 +320,15 @@ export function buildReportData(
   const allBranches = sourceData.branches ?? [];
   const allFeedbacks = sourceData.feedbacks ?? [];
   const allAlerts = sourceData.alerts ?? [];
+  const allZones = sourceData.zones ?? [];
   const stats = sourceData.stats ?? {};
+
+  // Zone lookup by ID
+  const zoneMap: Record<string, string> = {};
+  allZones.forEach((z: any) => { zoneMap[z.id] = z.name; });
+  // Branch to zone name
+  const branchZoneMap: Record<string, string> = {};
+  allBranches.forEach((b: any) => { if (b.zone_id && zoneMap[b.zone_id]) branchZoneMap[b.id] = zoneMap[b.zone_id]; });
 
   const filteredBranches = options?.branchIds?.length
     ? allBranches.filter((b: any) => options.branchIds!.includes(b.id))
@@ -356,6 +389,7 @@ export function buildReportData(
           const bFb = branchFbMap[b.id] || [];
           const bPos = bFb.filter((f: any) => f.sentiment === 'happy' || f.sentiment === 'very_happy').length;
           return {
+            zone: branchZoneMap[b.id] || '',
             name: b.name,
             satisfaction: bFb.length > 0 ? Math.round((bPos / bFb.length) * 100) : 0,
             feedbacks: bFb.length,
@@ -369,6 +403,7 @@ export function buildReportData(
           const branch = allBranches.find((b: any) => b.id === f.branch_id);
           return {
             date: format(new Date(f.created_at), 'dd/MM/yyyy'),
+            zone: branchZoneMap[f.branch_id] || '',
             branch: branch?.name ?? '',
             score: sentimentScores[f.sentiment] || 3,
             sentiment: sentimentLabels[f.sentiment] || f.sentiment,

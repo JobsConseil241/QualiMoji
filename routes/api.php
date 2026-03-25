@@ -10,7 +10,9 @@ use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\UserManagementController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\KioskController;
+use App\Http\Controllers\Api\KpiController;
 use App\Http\Controllers\Api\WhatsAppTemplateController;
+use App\Http\Controllers\Api\ZoneController;
 
 // ── Public Auth Routes ──
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -40,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Branches
+    Route::post('/branches/import', [BranchController::class, 'import']);
     Route::apiResource('branches', BranchController::class);
 
     // Feedbacks
@@ -79,6 +82,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/whatsapp/test', [WhatsAppTemplateController::class, 'sendTest']);
     Route::get('/whatsapp/logs', [WhatsAppTemplateController::class, 'logs']);
 
+    // KPIs
+    Route::prefix('kpis')->group(function () {
+        Route::get('/organization', [KpiController::class, 'organization']);
+        Route::get('/branches/{branch}', [KpiController::class, 'branch']);
+        Route::get('/branches/{branch}/targets', [KpiController::class, 'targets']);
+        Route::post('/branches/{branch}/targets', [KpiController::class, 'saveTargets']);
+        Route::post('/organization/targets', [KpiController::class, 'saveOrgTargets']);
+    });
+
     // Reports
     Route::prefix('reports')->group(function () {
         Route::get('/schedules', [ReportController::class, 'indexSchedules']);
@@ -88,6 +100,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/history', [ReportController::class, 'indexHistory']);
         Route::post('/history', [ReportController::class, 'storeHistory']);
     });
+
+    // Zones
+    Route::apiResource('zones', ZoneController::class)->except(['show']);
+    Route::post('/zones/{zone}/branches', [ZoneController::class, 'assignBranches']);
 
     // User Management (admin only)
     Route::middleware('role:admin')->group(function () {

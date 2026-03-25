@@ -2,11 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Star, MessageSquare, AlertTriangle, UserCheck, MapPin,
-  Phone, Mail, User, Filter, Loader2,
+  Phone, Mail, User, Filter, Loader2, BarChart3, Settings2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatCard } from '@/components/dashboard/StatCard';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -21,6 +22,8 @@ import {
 import { cn } from '@/lib/utils';
 import { fetchBranchDetail } from '@/services/dataService';
 import type { DbFeedback } from '@/services/dataService';
+import { BranchKpiDashboard } from '@/components/kpi/BranchKpiDashboard';
+import { BranchKpiConfig } from '@/components/kpi/BranchKpiConfig';
 
 const sentimentConfig: Record<string, { label: string; color: string }> = {
   very_happy: { label: 'Très satisfait', color: 'bg-success/10 text-success border-success/30' },
@@ -133,124 +136,152 @@ export default function BranchDetail() {
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Satisfaction" value={`${satisfactionPct}%`} icon={Star} subtitle="score global" colorMode="satisfaction" rawValue={satisfactionPct} />
-        <StatCard title="Feedbacks" value={(stats.total_feedbacks ?? 0).toLocaleString()} icon={MessageSquare} subtitle="total reçus" />
-        <StatCard title="Alertes actives" value={stats.active_alerts ?? 0} icon={AlertTriangle} colorMode="alert" rawValue={stats.active_alerts ?? 0} subtitle="en cours" />
-        <StatCard title="Taux positif" value={`${positiveRate}%`} icon={UserCheck} subtitle="satisfaits + très satisfaits" progress={positiveRate} />
-      </div>
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview" className="gap-1.5">
+            <Star className="h-3.5 w-3.5" /> Vue d'ensemble
+          </TabsTrigger>
+          <TabsTrigger value="kpis" className="gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" /> KPIs
+          </TabsTrigger>
+          <TabsTrigger value="kpi-config" className="gap-1.5">
+            <Settings2 className="h-3.5 w-3.5" /> Config KPIs
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Charts Row */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
-        {/* Satisfaction Evolution */}
-        <Card className="glass-card lg:col-span-3">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-display">Évolution de la satisfaction</CardTitle>
-            <p className="text-xs text-muted-foreground">Score moyen par semaine</p>
-          </CardHeader>
-          <CardContent>
-            {evolution.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={evolution} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis domain={[1, 5]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '10px', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="score" name={branch.name} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-12">Pas encore de données</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Common Issues */}
-        <Card className="glass-card lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-display">Problèmes fréquents</CardTitle>
-            <p className="text-xs text-muted-foreground">Issues les plus signalées</p>
-          </CardHeader>
-          <CardContent>
-            {issues.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={issues} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" unit="%" />
-                  <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={120} />
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '10px', fontSize: '12px' }} formatter={(v: number) => [`${v}%`, 'Part']} />
-                  <Bar dataKey="percentage" radius={[0, 6, 6, 0]} barSize={20}>
-                    {issues.map((_, i) => (
-                      <Cell key={i} fill={ISSUE_COLORS[i % ISSUE_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-12">Aucun problème signalé</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Feedbacks */}
-      <Card className="glass-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-base font-display">Feedbacks récents</CardTitle>
-            <div className="flex items-center gap-2">
-              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-              <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-                <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous</SelectItem>
-                  <SelectItem value="very_happy">Très satisfait</SelectItem>
-                  <SelectItem value="happy">Satisfait</SelectItem>
-                  <SelectItem value="unhappy">Insatisfait</SelectItem>
-                  <SelectItem value="very_unhappy">Très insatisfait</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        {/* ── Overview Tab ── */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Stat Cards */}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard title="Satisfaction" value={`${satisfactionPct}%`} icon={Star} subtitle="score global" colorMode="satisfaction" rawValue={satisfactionPct} />
+            <StatCard title="Feedbacks" value={(stats.total_feedbacks ?? 0).toLocaleString()} icon={MessageSquare} subtitle="total reçus" />
+            <StatCard title="Alertes actives" value={stats.active_alerts ?? 0} icon={AlertTriangle} colorMode="alert" rawValue={stats.active_alerts ?? 0} subtitle="en cours" />
+            <StatCard title="Taux positif" value={`${positiveRate}%`} icon={UserCheck} subtitle="satisfaits + très satisfaits" progress={positiveRate} />
           </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {filteredFeedbacks.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center">Aucun feedback pour ce filtre.</p>
-          )}
-          {filteredFeedbacks.map((f: any) => {
-            const sentCfg = sentimentConfig[f.sentiment] || sentimentConfig.unhappy;
-            const score = sentimentToScore(f.sentiment);
-            const comment = getComment(f);
-            return (
-              <button
-                key={f.id}
-                className="w-full text-left flex items-start gap-3 p-3 rounded-xl transition-all hover:bg-muted/50"
-                onClick={() => setSelectedFeedback(f)}
-              >
-                <Badge variant="outline" className={cn('mt-0.5 text-[10px] shrink-0', sentCfg.color)}>
-                  {score}/5
-                </Badge>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm line-clamp-2">{comment || sentCfg.label}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-[10px] text-muted-foreground">
-                      {new Date(f.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4', sentCfg.color)}>
-                      {sentCfg.label}
-                    </Badge>
-                    {f.customer_name && (
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                        <User className="h-2.5 w-2.5" /> {f.customer_name}
-                      </span>
-                    )}
-                  </div>
+
+          {/* Charts Row */}
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
+            {/* Satisfaction Evolution */}
+            <Card className="glass-card lg:col-span-3">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-display">Évolution de la satisfaction</CardTitle>
+                <p className="text-xs text-muted-foreground">Score moyen par semaine</p>
+              </CardHeader>
+              <CardContent>
+                {evolution.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={evolution} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="week" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis domain={[1, 5]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '10px', fontSize: '12px' }} />
+                      <Line type="monotone" dataKey="score" name={branch.name} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-12">Pas encore de données</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Common Issues */}
+            <Card className="glass-card lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-display">Problèmes fréquents</CardTitle>
+                <p className="text-xs text-muted-foreground">Issues les plus signalées</p>
+              </CardHeader>
+              <CardContent>
+                {issues.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={issues} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                      <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" unit="%" />
+                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={120} />
+                      <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '10px', fontSize: '12px' }} formatter={(v: number) => [`${v}%`, 'Part']} />
+                      <Bar dataKey="percentage" radius={[0, 6, 6, 0]} barSize={20}>
+                        {issues.map((_, i) => (
+                          <Cell key={i} fill={ISSUE_COLORS[i % ISSUE_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-12">Aucun problème signalé</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Feedbacks */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-base font-display">Feedbacks récents</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+                    <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous</SelectItem>
+                      <SelectItem value="very_happy">Très satisfait</SelectItem>
+                      <SelectItem value="happy">Satisfait</SelectItem>
+                      <SelectItem value="unhappy">Insatisfait</SelectItem>
+                      <SelectItem value="very_unhappy">Très insatisfait</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </button>
-            );
-          })}
-        </CardContent>
-      </Card>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {filteredFeedbacks.length === 0 && (
+                <p className="text-sm text-muted-foreground py-4 text-center">Aucun feedback pour ce filtre.</p>
+              )}
+              {filteredFeedbacks.map((f: any) => {
+                const sentCfg = sentimentConfig[f.sentiment] || sentimentConfig.unhappy;
+                const score = sentimentToScore(f.sentiment);
+                const comment = getComment(f);
+                return (
+                  <button
+                    key={f.id}
+                    className="w-full text-left flex items-start gap-3 p-3 rounded-xl transition-all hover:bg-muted/50"
+                    onClick={() => setSelectedFeedback(f)}
+                  >
+                    <Badge variant="outline" className={cn('mt-0.5 text-[10px] shrink-0', sentCfg.color)}>
+                      {score}/5
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm line-clamp-2">{comment || sentCfg.label}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(f.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4', sentCfg.color)}>
+                          {sentCfg.label}
+                        </Badge>
+                        {f.customer_name && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <User className="h-2.5 w-2.5" /> {f.customer_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── KPIs Tab ── */}
+        <TabsContent value="kpis">
+          <BranchKpiDashboard branchId={branch.id} period="30d" />
+        </TabsContent>
+
+        {/* ── KPI Config Tab ── */}
+        <TabsContent value="kpi-config">
+          <BranchKpiConfig branchId={branch.id} branchName={branch.name} />
+        </TabsContent>
+      </Tabs>
 
       {/* Feedback Detail Modal */}
       <Dialog open={!!selectedFeedback} onOpenChange={() => setSelectedFeedback(null)}>

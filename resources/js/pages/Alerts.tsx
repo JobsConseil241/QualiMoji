@@ -31,22 +31,39 @@ interface AlertRow {
   id: string;
   branch_id: string;
   branch_name: string;
-  type: 'critical' | 'warning' | 'info';
+  type: string;
   message: string;
+  severity: string | null;
   is_read: boolean;
   status: 'active' | 'resolved' | 'dismissed';
   resolved_by: string | null;
   resolved_at: string | null;
   resolution_note: string | null;
+  feedback_ids: string[] | null;
   created_at: string;
   updated_at: string;
 }
 
-const alertConfig = {
-  critical: { icon: AlertTriangle, label: 'Critique', dotColor: 'bg-destructive', textColor: 'text-destructive', borderColor: 'border-destructive/20 bg-destructive/5' },
-  warning: { icon: AlertCircle, label: 'Attention', dotColor: 'bg-warning', textColor: 'text-warning', borderColor: 'border-warning/20 bg-warning/5' },
-  info: { icon: Info, label: 'Info', dotColor: 'bg-info', textColor: 'text-info', borderColor: 'border-info/20 bg-info/5' },
+/* Map alert types to display config */
+const alertTypeConfig: Record<string, { icon: any; label: string; color: string }> = {
+  negative_spike: { icon: AlertTriangle, label: 'Pic negatif', color: 'text-destructive' },
+  satisfaction_drop: { icon: AlertCircle, label: 'Chute satisfaction', color: 'text-warning' },
+  consecutive_negative: { icon: AlertTriangle, label: 'Negatifs consecutifs', color: 'text-orange-500' },
+  low_satisfaction: { icon: AlertCircle, label: 'Satisfaction basse', color: 'text-destructive' },
+  inactivity: { icon: Clock, label: 'Inactivite', color: 'text-muted-foreground' },
+  low_volume: { icon: Info, label: 'Volume faible', color: 'text-blue-500' },
 };
+
+const defaultTypeConfig = { icon: AlertCircle, label: 'Alerte', color: 'text-warning' };
+
+/* Map severity to visual style */
+const severityConfig: Record<string, { dotColor: string; textColor: string; borderColor: string }> = {
+  high: { dotColor: 'bg-destructive', textColor: 'text-destructive', borderColor: 'border-destructive/20 bg-destructive/5' },
+  medium: { dotColor: 'bg-warning', textColor: 'text-warning', borderColor: 'border-warning/20 bg-warning/5' },
+  low: { dotColor: 'bg-blue-500', textColor: 'text-blue-500', borderColor: 'border-blue-500/20 bg-blue-500/5' },
+};
+
+const defaultSeverity = severityConfig.medium;
 
 const statusConfig = {
   active: { label: 'Active', icon: Clock, color: 'text-warning bg-warning/10 border-warning/30' },
@@ -103,7 +120,7 @@ export default function Alerts() {
     resolved: alerts.filter((a) => a.status === 'resolved').length,
     dismissed: alerts.filter((a) => a.status === 'dismissed').length,
     unread: alerts.filter((a) => !a.is_read).length,
-    critical: alerts.filter((a) => a.type === 'critical' && a.status === 'active').length,
+    critical: alerts.filter((a) => a.severity === 'high' && a.status === 'active').length,
   }), [alerts]);
 
   /* actions */
@@ -190,12 +207,15 @@ export default function Alerts() {
               <Input placeholder="Rechercher..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-8 w-36 text-xs"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 w-44 text-xs"><Filter className="h-3 w-3 mr-1" /><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous types</SelectItem>
-                <SelectItem value="critical">Critique</SelectItem>
-                <SelectItem value="warning">Attention</SelectItem>
-                <SelectItem value="info">Info</SelectItem>
+                <SelectItem value="negative_spike">Pic negatif</SelectItem>
+                <SelectItem value="satisfaction_drop">Chute satisfaction</SelectItem>
+                <SelectItem value="consecutive_negative">Negatifs consecutifs</SelectItem>
+                <SelectItem value="low_satisfaction">Satisfaction basse</SelectItem>
+                <SelectItem value="low_volume">Volume faible</SelectItem>
+                <SelectItem value="inactivity">Inactivite</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -224,23 +244,24 @@ export default function Alerts() {
           </Card>
         )}
         {filtered.map((alert) => {
-          const config = alertConfig[alert.type];
-          const status = statusConfig[alert.status];
-          const Icon = config.icon;
+          const typeConf = alertTypeConfig[alert.type] || defaultTypeConfig;
+          const sevConf = severityConfig[alert.severity || 'medium'] || defaultSeverity;
+          const status = statusConfig[alert.status] || statusConfig.active;
+          const Icon = typeConf.icon;
           const StatusIcon = status.icon;
 
           return (
-            <Card key={alert.id} className={cn('glass-card border transition-all', config.borderColor, !alert.is_read && 'ring-1 ring-primary/20')}>
+            <Card key={alert.id} className={cn('glass-card border transition-all', sevConf.borderColor, !alert.is_read && 'ring-1 ring-primary/20')}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <div className={cn('mt-0.5 p-2 rounded-lg shrink-0', `${config.dotColor}/10`)}>
-                    <Icon className={cn('h-4 w-4', config.textColor)} />
+                  <div className={cn('mt-0.5 p-2 rounded-lg shrink-0', `${sevConf.dotColor}/10`)}>
+                    <Icon className={cn('h-4 w-4', typeConf.color)} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-medium text-sm">{alert.branch_name}</span>
-                      <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4 border-current/30', config.textColor)}>
-                        {config.label}
+                      <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4 border-current/30', typeConf.color)}>
+                        {typeConf.label}
                       </Badge>
                       <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4 gap-0.5', status.color)}>
                         <StatusIcon className="h-2.5 w-2.5" /> {status.label}

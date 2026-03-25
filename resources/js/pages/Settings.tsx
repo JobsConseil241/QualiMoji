@@ -24,8 +24,10 @@ import { QuestionsConfig, DEFAULT_CONFIGS, type QuestionConfig } from '@/compone
 import UserManagement from '@/components/settings/UserManagement';
 import OrganizationConfig from '@/components/settings/OrganizationConfig';
 import BranchManagement from '@/components/settings/BranchManagement';
+import ZoneManagement from '@/components/settings/ZoneManagement';
 import { useAuth } from '@/hooks/useAuth';
 import KioskSettings from '@/components/settings/KioskSettings';
+import { OrgKpiTargets } from '@/components/kpi/OrgKpiTargets';
 
 /* ---------- types ---------- */
 interface AlertThreshold {
@@ -258,7 +260,10 @@ export default function Settings() {
             <TabsTrigger value="organization" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Organisation</TabsTrigger>
           )}
           {isAdmin && (
-            <TabsTrigger value="branches" className="gap-1.5"><MapPin className="h-3.5 w-3.5" /> Agences</TabsTrigger>
+            <TabsTrigger value="zones" className="gap-1.5"><MapPin className="h-3.5 w-3.5" /> Zones</TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="branches" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Agences</TabsTrigger>
           )}
           <TabsTrigger value="kpi" className="gap-1.5"><Gauge className="h-3.5 w-3.5" /> Seuils KPI</TabsTrigger>
           <TabsTrigger value="questions" className="gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> Questions</TabsTrigger>
@@ -273,6 +278,13 @@ export default function Settings() {
         {isAdmin && (
           <TabsContent value="organization" className="space-y-6">
             <OrganizationConfig />
+          </TabsContent>
+        )}
+
+        {/* ==================== ZONES TAB ==================== */}
+        {isAdmin && (
+          <TabsContent value="zones" className="space-y-6">
+            <ZoneManagement />
           </TabsContent>
         )}
 
@@ -441,6 +453,10 @@ export default function Settings() {
               </CardContent>
             )}
           </Card>
+
+          {/* Org-level KPI Targets with mandatory flags */}
+          <Separator className="my-6" />
+          <OrgKpiTargets />
         </TabsContent>
 
         {/* ==================== QUESTIONS TAB ==================== */}

@@ -30,7 +30,9 @@ function KioskInner() {
   const [selectedSentiment, setSelectedSentiment] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [freeText, setFreeText] = useState('');
-  const [contactName, setContactName] = useState('');
+  const [contactLastName, setContactLastName] = useState('');
+  const [contactFirstName, setContactFirstName] = useState('');
+  const [contactGender, setContactGender] = useState<'M' | 'F' | null>(null);
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+241');
@@ -53,7 +55,9 @@ function KioskInner() {
     setSelectedSentiment(null);
     setSelectedOptions([]);
     setFreeText('');
-    setContactName('');
+    setContactLastName('');
+    setContactFirstName('');
+    setContactGender(null);
     setContactEmail('');
     setContactPhone('');
     setCountryCode('+241');
@@ -165,11 +169,13 @@ function KioskInner() {
           return `${countryCode}${digits.replace(/^0+/, '')}`;
         })()
       : '';
-    if (savedFeedbackId && isOnline && (contactName || contactEmail || fullPhone)) {
+    const fullName = [contactFirstName, contactLastName].filter(Boolean).join(' ');
+    if (savedFeedbackId && isOnline && (fullName || contactEmail || fullPhone)) {
       try {
         const { default: api } = await import('@/lib/api');
         await api.put(`/kiosk/feedback/${savedFeedbackId}/contact`, {
-          customer_name: contactName || null,
+          customer_name: fullName || null,
+          customer_gender: contactGender,
           customer_email: contactEmail || null,
           customer_phone: fullPhone || null,
           wants_callback: true,
@@ -357,7 +363,29 @@ function KioskInner() {
               </div>
 
               <div className="space-y-3 text-left">
-                <Input value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Nom (optionnel)" className="h-12 text-base" />
+                <div className="flex gap-2">
+                  <Input value={contactLastName} onChange={e => setContactLastName(e.target.value)} placeholder="Nom" className="h-12 text-base flex-1" />
+                  <Input value={contactFirstName} onChange={e => setContactFirstName(e.target.value)} placeholder="Prénom" className="h-12 text-base flex-1" />
+                </div>
+
+                {/* Genre */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setContactGender(contactGender === 'M' ? null : 'M')}
+                    className={`flex-1 h-12 rounded-md border text-base font-medium transition-colors ${contactGender === 'M' ? 'bg-primary text-primary-foreground border-primary' : 'border-input bg-background hover:bg-accent'}`}
+                  >
+                    Homme
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContactGender(contactGender === 'F' ? null : 'F')}
+                    className={`flex-1 h-12 rounded-md border text-base font-medium transition-colors ${contactGender === 'F' ? 'bg-primary text-primary-foreground border-primary' : 'border-input bg-background hover:bg-accent'}`}
+                  >
+                    Femme
+                  </button>
+                </div>
+
                 <Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} placeholder="Email (optionnel)" type="email" className="h-12 text-base" />
                 <div className="flex gap-2">
                   <select
@@ -373,12 +401,13 @@ function KioskInner() {
                       <option value="+242">🇨🇬 +242 Congo</option>
                       <option value="+225">🇨🇮 +225 Côte d'Ivoire</option>
                   </select>
-                  <Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} placeholder="Téléphone (optionnel)" type="tel" className="h-12 text-base flex-1" />
+                  <Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} placeholder="Téléphone *" type="tel" className="h-12 text-base flex-1" />
                 </div>
+                {!contactPhone && <p className="text-xs text-destructive">* Le numéro de téléphone est obligatoire</p>}
               </div>
 
               <div className="flex flex-col items-center gap-3 pt-2">
-                <Button size="lg" onClick={() => { haptic(); handleSubmitContact(); }} className="px-8 gap-2">
+                <Button size="lg" onClick={() => { haptic(); handleSubmitContact(); }} disabled={!contactPhone.trim()} className="px-8 gap-2">
                   <Phone className="h-5 w-5" /> Envoyer mes coordonnées
                 </Button>
                 <button onClick={() => { haptic(); goToStep('thankyou'); }} className="text-sm text-muted-foreground underline hover:text-foreground">

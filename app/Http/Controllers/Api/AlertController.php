@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Alert;
-use App\Models\Branch;
 use App\Models\AuditLog;
+use App\Traits\FiltersByUserBranches;
 use Illuminate\Http\Request;
 
 class AlertController extends Controller
 {
+    use FiltersByUserBranches;
     public function index(Request $request)
     {
         $user = $request->user();
@@ -107,13 +108,4 @@ class AlertController extends Controller
         ]);
     }
 
-    private function getUserBranchIds($user)
-    {
-        if ($user->hasRole('admin') || $user->hasRole('owner')) {
-            return Branch::where('organization_id', $user->organization_id)
-                ->where('is_active', true)
-                ->pluck('id');
-        }
-        return $user->branches()->where('is_active', true)->pluck('branches.id');
-    }
 }

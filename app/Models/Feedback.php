@@ -16,6 +16,7 @@ class Feedback extends Model
         'sentiment',
         'follow_up_responses',
         'customer_name',
+        'customer_gender',
         'customer_email',
         'customer_phone',
         'customer_notified',

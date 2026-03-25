@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Feedback;
 use App\Models\Branch;
 use App\Models\Alert;
+use App\Traits\FiltersByUserBranches;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    use FiltersByUserBranches;
     public function index(Request $request)
     {
         $user = $request->user();
@@ -90,16 +92,6 @@ class DashboardController extends Controller
             'active_alerts' => $activeAlerts,
             'period' => $period,
         ]);
-    }
-
-    private function getUserBranchIds($user)
-    {
-        if ($user->hasRole('admin') || $user->hasRole('owner')) {
-            return Branch::where('organization_id', $user->organization_id)
-                ->where('is_active', true)
-                ->pluck('id');
-        }
-        return $user->branches()->where('is_active', true)->pluck('branches.id');
     }
 
     private function getStartDate(string $period, bool $previous = false): Carbon

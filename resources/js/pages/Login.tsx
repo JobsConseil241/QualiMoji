@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -88,7 +88,7 @@ export default function Login() {
             </div>
           )}
           <h1 className="font-display text-2xl font-bold tracking-tight">{branding.name || 'QualiMoji'}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Espace Directeur Qualité</p>
+          <p className="text-sm text-muted-foreground mt-1">Plateforme Qualité & Satisfaction Client</p>
         </CardHeader>
         <CardContent className="p-6 pt-4">
           {!showForgot ? (
@@ -152,32 +152,29 @@ export default function Login() {
                 </Button>
               </form>
 
-              <p className="text-center text-sm text-muted-foreground mt-5">
-                Pas encore de compte ?{' '}
-                <Link to="/signup" className="text-primary hover:underline font-medium">
-                  Créer un compte
-                </Link>
-              </p>
-
               {/* Demo accounts */}
               <div className="mt-6 border-t border-border pt-4">
                 <p className="text-xs text-muted-foreground text-center mb-3 font-medium uppercase tracking-wide">Comptes de démonstration</p>
                 <div className="space-y-1.5">
                   {[
-                    { label: 'Admin', email: 'admin@qualimoji.com', role: 'admin' },
-                    { label: 'Directeur Qualité', email: 'sophie.laurent@qualimoji.com', role: 'quality_director' },
-                    { label: 'Manager (Paris, Lyon...)', email: 'marc.dubois@qualimoji.com', role: 'branch_manager' },
-                    { label: 'Manager (Lille, Nantes...)', email: 'julie.moreau@qualimoji.com', role: 'branch_manager' },
-                    { label: 'IT Admin', email: 'thomas.petit@qualimoji.com', role: 'it_admin' },
+                    { label: 'Administrateur', desc: 'Accès complet', email: 'admin@bgfi.com' },
+                    { label: 'Directeur Qualité', desc: 'Dashboard, rapports, KPIs', email: 'sophie.nze@bgfi.com' },
+                    { label: 'Directeur de Zone', desc: 'Zone Libreville (4 agences)', email: 'marc.ndong@bgfi.com' },
+                    { label: "Directeur d'Agence", desc: 'BGFI Siège Central', email: 'jm.obiang@bgfi.com' },
+                    { label: "Directeur d'Agence", desc: 'Centauri Premium Libreville', email: 'c.moussavou@bgfi.com' },
+                    { label: 'Admin IT', desc: 'Gestion technique', email: 'p.ntoutoume@bgfi.com' },
                   ].map((account) => (
                     <button
                       key={account.email}
                       type="button"
                       onClick={() => { setEmail(account.email); setPassword('password'); }}
-                      className="w-full flex items-center justify-between rounded-md border border-border/50 px-3 py-2 text-left text-xs hover:bg-accent/50 transition-colors"
+                      className="w-full flex items-center justify-between rounded-md border border-border/50 px-3 py-2 text-left text-xs hover:bg-accent/50 transition-colors group"
                     >
-                      <span className="font-medium text-foreground">{account.label}</span>
-                      <span className="text-muted-foreground">{account.email}</span>
+                      <div>
+                        <span className="font-medium text-foreground">{account.label}</span>
+                        <span className="text-muted-foreground ml-1.5">— {account.desc}</span>
+                      </div>
+                      <span className="text-muted-foreground group-hover:text-foreground transition-colors">{account.email}</span>
                     </button>
                   ))}
                   <p className="text-[10px] text-muted-foreground text-center mt-2">

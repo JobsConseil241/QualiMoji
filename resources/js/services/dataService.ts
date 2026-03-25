@@ -139,6 +139,33 @@ export async function dismissAlert(id: string) {
     return data;
 }
 
+// ── KPI API ──
+
+export async function fetchBranchKpis(branchId: string, period: string = '30d') {
+    const { data } = await api.get(`/kpis/branches/${branchId}`, { params: { period } });
+    return data;
+}
+
+export async function fetchOrgKpis(period: string = '30d') {
+    const { data } = await api.get('/kpis/organization', { params: { period } });
+    return data;
+}
+
+export async function fetchBranchTargets(branchId: string) {
+    const { data } = await api.get(`/kpis/branches/${branchId}/targets`);
+    return data.targets;
+}
+
+export async function saveBranchTargets(branchId: string, targets: Array<{ key: string; target: number; critical: number }>) {
+    const { data } = await api.post(`/kpis/branches/${branchId}/targets`, { targets });
+    return data.targets;
+}
+
+export async function saveOrgTargets(targets: Array<{ key: string; target: number; critical: number; is_mandatory?: boolean }>) {
+    const { data } = await api.post('/kpis/organization/targets', { targets });
+    return data.targets;
+}
+
 // Polling replacement for realtime subscriptions
 export function subscribeFeedbacks(callback: (payload: any) => void) {
     const interval = setInterval(async () => {

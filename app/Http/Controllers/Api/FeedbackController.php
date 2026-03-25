@@ -7,10 +7,12 @@ use App\Models\Feedback;
 use App\Models\Branch;
 use App\Jobs\CheckKpiThresholds;
 use App\Jobs\SendCustomerWhatsApp;
+use App\Traits\FiltersByUserBranches;
 use Illuminate\Http\Request;
 
 class FeedbackController extends Controller
 {
+    use FiltersByUserBranches;
     public function index(Request $request)
     {
         $user = $request->user();
@@ -118,13 +120,4 @@ class FeedbackController extends Controller
         ]);
     }
 
-    private function getUserBranchIds($user)
-    {
-        if ($user->hasRole('admin') || $user->hasRole('owner')) {
-            return Branch::where('organization_id', $user->organization_id)
-                ->where('is_active', true)
-                ->pluck('id');
-        }
-        return $user->branches()->where('is_active', true)->pluck('branches.id');
-    }
 }

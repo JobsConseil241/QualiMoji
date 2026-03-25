@@ -52,7 +52,9 @@ export default function Reports() {
   const [includeFeedbacks, setIncludeFeedbacks] = useState(true);
   const [includeAlerts, setIncludeAlerts] = useState(true);
   const [includeCharts, setIncludeCharts] = useState(true);
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string; zone_id?: string }[]>([]);
+  const [zones, setZones] = useState<{ id: string; name: string }[]>([]);
+  const [selectedZones, setSelectedZones] = useState<string[]>([]);
   const [reportData, setReportData] = useState<any>(null);
   const [orgName, setOrgName] = useState('');
 
@@ -60,15 +62,17 @@ export default function Reports() {
   useEffect(() => {
     (async () => {
       try {
-        const [branchList, stats, feedbacks, alerts, branding] = await Promise.all([
+        const [branchList, stats, feedbacks, alerts, branding, zonesData] = await Promise.all([
           fetchBranches(),
           fetchDashboardStats('30d'),
           fetchFeedbacks({ per_page: 2000 }),
           fetchAlerts({ per_page: 500 }),
           api.get('/branding').then(r => r.data).catch(() => null),
+          api.get('/zones').then(r => r.data).catch(() => []),
         ]);
-        setBranches((branchList as any[]).map((b: any) => ({ id: b.id, name: b.name })));
-        setReportData({ branches: branchList, stats, feedbacks, alerts });
+        setBranches((branchList as any[]).map((b: any) => ({ id: b.id, name: b.name, zone_id: b.zone_id })));
+        setZones(Array.isArray(zonesData) ? zonesData.map((z: any) => ({ id: z.id, name: z.name })) : []);
+        setReportData({ branches: branchList, stats, feedbacks, alerts, zones: zonesData });
         if (branding?.name) setOrgName(branding.name);
       } catch {}
     })();
@@ -143,6 +147,18 @@ export default function Reports() {
 
   const toggleBranch = (id: string) => {
     setSelectedBranches((prev) => prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]);
+  };
+
+  const toggleZone = (zoneId: string) => {
+    const zoneBranchIds = branches.filter(b => b.zone_id === zoneId).map(b => b.id);
+    const isSelected = selectedZones.includes(zoneId);
+    if (isSelected) {
+      setSelectedZones(prev => prev.filter(z => z !== zoneId));
+      setSelectedBranches(prev => prev.filter(id => !zoneBranchIds.includes(id)));
+    } else {
+      setSelectedZones(prev => [...prev, zoneId]);
+      setSelectedBranches(prev => [...new Set([...prev, ...zoneBranchIds])]);
+    }
   };
 
   const toggleSentiment = (s: string) => {
@@ -329,26 +345,69 @@ export default function Reports() {
 
               <Separator />
 
-              {/* Branches */}
-              <div className="space-y-2">
+              {/* Zones & Branches */}
+              <div className="space-y-3">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Building2 className="h-3.5 w-3.5" /> Agences
+                  <Building2 className="h-3.5 w-3.5" /> Zones & Agences
                 </Label>
-                <p className="text-[10px] text-muted-foreground">Laissez vide pour inclure toutes les agences</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {branches.map((b) => (
-                    <label key={b.id} className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-xs',
-                      selectedBranches.includes(b.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
-                    )}>
-                      <Checkbox
-                        checked={selectedBranches.includes(b.id)}
-                        onCheckedChange={() => toggleBranch(b.id)}
-                      />
-                      {b.name}
-                    </label>
-                  ))}
-                </div>
+                <p className="text-[10px] text-muted-foreground">Sélectionnez une zone pour inclure toutes ses agences, ou cochez individuellement. Laissez vide pour tout inclure.</p>
+
+                {zones.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {zones.map((z) => (
+                      <label key={z.id} className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-xs font-medium',
+                        selectedZones.includes(z.id) ? 'border-violet-500 bg-violet-500/10 text-violet-600' : 'hover:bg-muted/50'
+                      )}>
+                        <Checkbox
+                          checked={selectedZones.includes(z.id)}
+                          onCheckedChange={() => toggleZone(z.id)}
+                        />
+                        {z.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {zones.filter(z => branches.some(b => b.zone_id === z.id)).map((z) => (
+                  <div key={z.id} className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{z.name}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {branches.filter(b => b.zone_id === z.id).map((b) => (
+                        <label key={b.id} className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-xs',
+                          selectedBranches.includes(b.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                        )}>
+                          <Checkbox
+                            checked={selectedBranches.includes(b.id)}
+                            onCheckedChange={() => toggleBranch(b.id)}
+                          />
+                          {b.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {branches.some(b => !b.zone_id) && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Sans zone</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {branches.filter(b => !b.zone_id).map((b) => (
+                        <label key={b.id} className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-xs',
+                          selectedBranches.includes(b.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                        )}>
+                          <Checkbox
+                            checked={selectedBranches.includes(b.id)}
+                            onCheckedChange={() => toggleBranch(b.id)}
+                          />
+                          {b.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Separator />

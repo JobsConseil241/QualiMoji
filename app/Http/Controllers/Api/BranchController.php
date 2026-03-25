@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Feedback;
 use App\Models\Alert;
 use App\Models\AuditLog;
+use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -86,6 +87,7 @@ class BranchController extends Controller
             'city' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
             'region' => 'nullable|string|max:255',
+            'zone_id' => 'nullable|uuid|exists:zones,id',
             'is_active' => 'boolean',
         ]);
 
@@ -230,6 +232,7 @@ class BranchController extends Controller
             'city' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
             'region' => 'nullable|string|max:255',
+            'zone_id' => 'nullable|uuid|exists:zones,id',
             'is_active' => 'boolean',
         ]);
 
@@ -265,5 +268,66 @@ class BranchController extends Controller
         $branch->delete();
 
         return response()->json(['message' => 'Branch deleted successfully']);
+    }
+
+    public function import(Request $request)
+    {
+        $validated = $request->validate([
+            'branches' => 'required|array|min:1',
+            'branches.*.name' => 'required|string|max:255',
+            'branches.*.city' => 'nullable|string|max:255',
+            'branches.*.region' => 'nullable|string|max:255',
+            'branches.*.address' => 'nullable|string|max:500',
+            'branches.*.zone' => 'nullable|string|max:255',
+        ]);
+
+        $orgId = $request->user()->organization_id;
+        $imported = 0;
+        $errors = 0;
+
+        // Pre-load zones by name for matching
+        $zonesByName = Zone::where('organization_id', $orgId)
+            ->pluck('id', 'name')
+            ->mapWithKeys(fn($id, $name) => [mb_strtolower($name) => $id]);
+
+        foreach ($validated['branches'] as $row) {
+            try {
+                $zoneId = null;
+                if (!empty($row['zone'])) {
+                    $zoneId = $zonesByName[mb_strtolower($row['zone'])] ?? null;
+                    // Auto-create zone if not found
+                    if (!$zoneId) {
+                        $zone = Zone::create([
+                            'organization_id' => $orgId,
+                            'name' => $row['zone'],
+                        ]);
+                        $zoneId = $zone->id;
+                        $zonesByName[mb_strtolower($row['zone'])] = $zoneId;
+                    }
+                }
+
+                Branch::create([
+                    'organization_id' => $orgId,
+                    'name' => $row['name'],
+                    'city' => $row['city'] ?? null,
+                    'region' => $row['region'] ?? null,
+                    'address' => $row['address'] ?? null,
+                    'zone_id' => $zoneId,
+                ]);
+                $imported++;
+            } catch (\Exception $e) {
+                $errors++;
+            }
+        }
+
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'actor_email' => $request->user()->email,
+            'action' => 'branches.imported',
+            'target_type' => 'branch',
+            'details' => ['imported' => $imported, 'errors' => $errors],
+        ]);
+
+        return response()->json(['imported' => $imported, 'errors' => $errors]);
     }
 }

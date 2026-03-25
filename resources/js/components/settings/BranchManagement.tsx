@@ -20,16 +20,23 @@ interface BranchRow {
   city: string | null;
   address: string | null;
   region: string | null;
+  zone_id: string | null;
   is_active: boolean;
   organization_id: string;
 }
 
-const emptyForm = { name: '', city: '', address: '', region: '' };
+interface Zone {
+  id: string;
+  name: string;
+}
+
+const emptyForm = { name: '', city: '', address: '', region: '', zone_id: '' };
 const PAGE_SIZE = 10;
 
 export default function BranchManagement() {
   const { toast } = useToast();
   const [branches, setBranches] = useState<BranchRow[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -49,9 +56,13 @@ export default function BranchManagement() {
       const { data: orgData } = await api.get('/settings/organization');
       const org = orgData?.organization ?? orgData;
       if (org?.id) setOrgId(org.id);
-      const { data } = await api.get('/branches', { params: { include_inactive: 1 } });
-      const items = data?.branches ?? data?.data ?? (Array.isArray(data) ? data : []);
+      const [branchRes, zoneRes] = await Promise.all([
+        api.get('/branches', { params: { include_inactive: 1 } }),
+        api.get('/zones'),
+      ]);
+      const items = branchRes.data?.branches ?? branchRes.data?.data ?? (Array.isArray(branchRes.data) ? branchRes.data : []);
       setBranches(items as BranchRow[]);
+      setZones(Array.isArray(zoneRes.data) ? zoneRes.data : []);
     } catch (err) {
       console.error('Failed to load branches:', err);
     }
@@ -86,7 +97,7 @@ export default function BranchManagement() {
   const openCreate = () => { setEditingId(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (b: BranchRow) => {
     setEditingId(b.id);
-    setForm({ name: b.name, city: b.city || '', address: b.address || '', region: b.region || '' });
+    setForm({ name: b.name, city: b.city || '', address: b.address || '', region: b.region || '', zone_id: b.zone_id || '' });
     setDialogOpen(true);
   };
 
@@ -96,12 +107,12 @@ export default function BranchManagement() {
     try {
       if (editingId) {
         await api.put(`/branches/${editingId}`, {
-          name: form.name, city: form.city || null, address: form.address || null, region: form.region || null,
+          name: form.name, city: form.city || null, address: form.address || null, region: form.region || null, zone_id: form.zone_id || null,
         });
         toast({ title: 'Agence modifiée' });
       } else {
         await api.post('/branches', {
-          name: form.name, city: form.city || null, address: form.address || null, region: form.region || null,
+          name: form.name, city: form.city || null, address: form.address || null, region: form.region || null, zone_id: form.zone_id || null,
         });
         toast({ title: 'Agence créée' });
       }
@@ -180,6 +191,7 @@ export default function BranchManagement() {
                 <TableRow>
                   <TableHead className="text-xs">Nom</TableHead>
                   <TableHead className="text-xs">Ville</TableHead>
+                  <TableHead className="text-xs">Zone</TableHead>
                   <TableHead className="text-xs">Province</TableHead>
                   <TableHead className="text-xs">Statut</TableHead>
                   <TableHead className="text-xs">Kiosk</TableHead>
@@ -191,6 +203,15 @@ export default function BranchManagement() {
                   <TableRow key={b.id}>
                     <TableCell className="text-sm font-medium">{b.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{b.city || '—'}</TableCell>
+                    <TableCell>
+                      {b.zone_id ? (
+                        <Badge variant="secondary" className="text-[10px] bg-violet-500/10 text-violet-600">
+                          {zones.find(z => z.id === b.zone_id)?.name || '—'}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{b.region || '—'}</TableCell>
                     <TableCell>
                       <Badge variant={b.is_active ? 'default' : 'secondary'} className="text-xs">
@@ -231,7 +252,7 @@ export default function BranchManagement() {
                   </TableRow>
                 ))}
                 {paged.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">Aucune agence trouvée</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">Aucune agence trouvée</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -276,9 +297,23 @@ export default function BranchManagement() {
                 <Input value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} placeholder="Grand Casablanca" />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label>Adresse</Label>
-              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Rue de la Banque" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Adresse</Label>
+                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Rue de la Banque" />
+              </div>
+              <div className="space-y-1">
+                <Label>Zone</Label>
+                <Select value={form.zone_id || 'none'} onValueChange={v => setForm({ ...form, zone_id: v === 'none' ? '' : v })}>
+                  <SelectTrigger><SelectValue placeholder="Aucune zone" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucune zone</SelectItem>
+                    {zones.map(z => (
+                      <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {editingId && (
               <div className="space-y-2 pt-2 border-t">

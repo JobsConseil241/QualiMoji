@@ -8,7 +8,13 @@
       "Bash(php -l app/Http/Controllers/Api/KioskController.php)",
       "Bash(php -l app/Http/Controllers/Api/BranchController.php)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" --connect-timeout 5 https://gate.whapi.cloud)",
-      "Bash(curl -4 -s -w \"\\\\nHTTP_CODE: %{http_code}\\\\n\" --connect-timeout 10 -H \"Authorization: Bearer cBvBqHVJVPUTbV24NLLeaZvqPpX8W2cx\" -H \"Content-Type: application/json\" -d '{\"\"to\"\":\"\"242000000000\"\",\"\"body\"\":\"\"test\"\"}' \"https://gate.whapi.cloud/messages/text\")"
+      "Bash(curl -4 -s -w \"\\\\nHTTP_CODE: %{http_code}\\\\n\" --connect-timeout 10 -H \"Authorization: Bearer cBvBqHVJVPUTbV24NLLeaZvqPpX8W2cx\" -H \"Content-Type: application/json\" -d '{\"\"to\"\":\"\"242000000000\"\",\"\"body\"\":\"\"test\"\"}' \"https://gate.whapi.cloud/messages/text\")",
+      "Bash(find /Users/primeclet/JOBS/QualiMoji-laravel/routes -type f -name *.php)",
+      "Bash(npm run:*)",
+      "Bash(find /Users/primeclet/JOBS/QualiMoji-laravel/database/migrations -type f -name *user*branch* -o -name *branch*assignment*)",
+      "Bash(grep -r \"hasRole\\\\|UserRole\\\\|role.*==\\\\|role.*!=\\\\|role.*in\" /Users/primeclet/JOBS/QualiMoji-laravel/app/Http/Controllers --include=*.php -l)",
+      "Bash(find /Users/primeclet/JOBS/QualiMoji-laravel/app/Models -type f -name *.php)",
+      "Bash(grep -r \"Zone\\\\|zone\" /Users/primeclet/JOBS/QualiMoji-laravel/app/Models --include=*.php)"
     ]
   }
 }

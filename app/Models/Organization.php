@@ -37,6 +37,11 @@ class Organization extends Model
         return $this->hasMany(Branch::class);
     }
 
+    public function zones()
+    {
+        return $this->hasMany(Zone::class);
+    }
+
     public function questionConfigs()
     {
         return $this->hasMany(QuestionConfig::class);

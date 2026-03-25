@@ -8,13 +8,25 @@ import { cn } from '@/lib/utils';
 import { fetchAlerts, markAlertAsRead as apiMarkRead, markAllAlertsAsRead as apiMarkAll } from '@/services/dataService';
 import type { Alert } from '@/types';
 
-const iconMap = {
+const iconMap: Record<string, typeof AlertTriangle> = {
+  negative_spike: AlertTriangle,
+  low_satisfaction: AlertTriangle,
+  consecutive_negative: AlertTriangle,
+  satisfaction_drop: AlertCircle,
+  low_volume: Info,
+  inactivity: Info,
   critical: AlertTriangle,
   warning: AlertCircle,
   info: Info,
 };
 
-const colorMap = {
+const colorMap: Record<string, string> = {
+  negative_spike: 'text-destructive',
+  low_satisfaction: 'text-destructive',
+  consecutive_negative: 'text-orange-500',
+  satisfaction_drop: 'text-warning',
+  low_volume: 'text-blue-500',
+  inactivity: 'text-muted-foreground',
   critical: 'text-destructive',
   warning: 'text-warning',
   info: 'text-info',
@@ -98,7 +110,7 @@ export function NotificationDropdown() {
               <p className="text-sm text-muted-foreground text-center py-8">Aucune notification</p>
             ) : (
               alerts.map((alert, i) => {
-                const Icon = iconMap[alert.type];
+                const Icon = iconMap[alert.type] || AlertCircle;
                 return (
                   <div key={alert.id}>
                     <button

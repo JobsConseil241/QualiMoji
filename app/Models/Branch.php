@@ -11,6 +11,7 @@ class Branch extends Model
 
     protected $fillable = [
         'organization_id',
+        'zone_id',
         'name',
         'city',
         'address',
@@ -28,6 +29,11 @@ class Branch extends Model
     public function organization()
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function zone()
+    {
+        return $this->belongsTo(Zone::class);
     }
 
     public function feedbacks()
