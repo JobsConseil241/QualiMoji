@@ -8,19 +8,29 @@ use App\Models\Feedback;
 use App\Models\Alert;
 use App\Models\AuditLog;
 use App\Models\Zone;
+use App\Traits\FiltersByUserBranches;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class BranchController extends Controller
 {
+    use FiltersByUserBranches;
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Branch::where('organization_id', $user->organization_id);
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('owner') || $user->hasRole('quality_director') || $user->hasRole('it_admin');
 
-        // Par défaut, ne retourner que les agences actives
-        // Passer ?include_inactive=1 pour voir toutes les agences (page de gestion)
+        // Admin pages (include_inactive) bypass role filtering
+        if ($request->boolean('include_inactive') && $isAdmin) {
+            $query = Branch::where('organization_id', $user->organization_id);
+        } else {
+            // Filter by user's branch access
+            $branchIds = $this->getUserBranchIds($user);
+            $query = Branch::whereIn('id', $branchIds);
+        }
+
+        // Active filter
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
         } elseif (!$request->boolean('include_inactive')) {

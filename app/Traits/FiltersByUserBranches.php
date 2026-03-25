@@ -8,8 +8,8 @@ trait FiltersByUserBranches
 {
     private function getUserBranchIds($user)
     {
-        // Admin / Owner: all active branches in org
-        if ($user->hasRole('admin') || $user->hasRole('owner')) {
+        // Admin / Owner / Quality Director / IT Admin: all active branches in org
+        if ($user->hasRole('admin') || $user->hasRole('owner') || $user->hasRole('quality_director') || $user->hasRole('it_admin')) {
             return Branch::where('organization_id', $user->organization_id)
                 ->where('is_active', true)
                 ->pluck('id');

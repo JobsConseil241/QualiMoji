@@ -86,7 +86,7 @@ const App = () => (
                                 <Route
                                     path="/settings"
                                     element={
-                                        <ProtectedRoute allowedRoles={['admin', 'quality_director']}>
+                                        <ProtectedRoute allowedRoles={['admin', 'quality_director', 'zone_director', 'it_admin']}>
                                             <ErrorBoundary><Settings /></ErrorBoundary>
                                         </ProtectedRoute>
                                     }
