@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   Users, Plus, Pencil, Ban, Loader2, Mail, Shield, Search, RotateCw, History, Upload, KeyRound,
+  UserCircle, CheckCircle2, XCircle, Eye, EyeOff,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -103,6 +108,12 @@ export default function UserManagement() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterBranch, setFilterBranch] = useState<string>('all');
   const [form, setForm] = useState(emptyForm);
+  const [showPasswordField, setShowPasswordField] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState<ManagedUser | null>(null);
+  const [resetPwUser, setResetPwUser] = useState<ManagedUser | null>(null);
+  const [resetPwValue, setResetPwValue] = useState('');
+  const [resetPwShow, setResetPwShow] = useState(false);
+  const [resetPwSaving, setResetPwSaving] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
   const fetchBranches = useCallback(async () => {
@@ -188,17 +199,23 @@ export default function UserManagement() {
     if (!editingUserId || !user) return;
     setSaving(true);
     try {
-      await api.put(`/settings/users/${editingUserId}`, {
+      const payload: any = {
         full_name: form.full_name,
         email: form.email,
         role: form.role,
         zone_id: form.role === 'zone_director' ? form.zone_id || undefined : undefined,
         branch_ids: form.role === 'branch_director' ? form.branch_ids : [],
         is_active: form.is_active,
-      });
+      };
+      if (form.password.trim()) {
+        payload.password = form.password;
+        payload.send_credentials = true;
+      }
+      await api.put(`/settings/users/${editingUserId}`, payload);
 
-      toast.success('Utilisateur mis à jour');
+      toast.success(form.password.trim() ? 'Utilisateur mis à jour — email envoyé avec les nouveaux identifiants' : 'Utilisateur mis à jour');
       setShowDialog(false);
+      setShowPasswordField(false);
       setEditingUserId(null);
       setForm(emptyForm);
       fetchUsers();
@@ -210,21 +227,40 @@ export default function UserManagement() {
     }
   };
 
-  const resetPassword = async (targetUser: ManagedUser) => {
-    const newPassword = prompt('Nouveau mot de passe pour ' + targetUser.full_name + ' :');
-    if (!newPassword || newPassword.length < 6) {
-      if (newPassword !== null) toast.error('Le mot de passe doit contenir au moins 6 caractères');
+  const openResetPassword = (targetUser: ManagedUser) => {
+    setResetPwUser(targetUser);
+    setResetPwValue('');
+    setResetPwShow(false);
+  };
+
+  const doResetPassword = async () => {
+    if (!resetPwUser || resetPwValue.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
+    setResetPwSaving(true);
     try {
-      await api.put(`/settings/users/${targetUser.id}`, { password: newPassword, send_credentials: true });
-      toast.success('Mot de passe réinitialisé et email envoyé');
+      await api.put(`/settings/users/${resetPwUser.id}`, { password: resetPwValue, send_credentials: true });
+      toast.success('Mot de passe réinitialisé — email envoyé à ' + resetPwUser.email);
+      setResetPwUser(null);
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Erreur');
+    } finally {
+      setResetPwSaving(false);
     }
   };
 
-  const toggleUserActive = async (targetUser: ManagedUser) => {
+  const handleToggleActive = (targetUser: ManagedUser) => {
+    if (targetUser.is_active) {
+      // Deactivation needs confirmation
+      setConfirmDeactivate(targetUser);
+    } else {
+      // Activation is direct
+      doToggleActive(targetUser);
+    }
+  };
+
+  const doToggleActive = async (targetUser: ManagedUser) => {
     if (!user) return;
     const newActive = !targetUser.is_active;
     try {
@@ -235,6 +271,7 @@ export default function UserManagement() {
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Erreur');
     }
+    setConfirmDeactivate(null);
   };
 
   const openEdit = (u: ManagedUser) => {
@@ -476,16 +513,15 @@ export default function UserManagement() {
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(u)} title="Éditer">
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => resetPassword(u)} title="Réinitialiser le mot de passe">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openResetPassword(u)} title="Réinitialiser le mot de passe">
                                   <KeyRound className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
-                                  variant="ghost" size="icon"
-                                  className={cn('h-7 w-7', !u.is_active ? 'text-accent' : 'text-destructive')}
-                                  onClick={() => toggleUserActive(u)}
-                                  title={u.is_active ? 'Désactiver' : 'Activer'}
+                                  variant="ghost" size="sm"
+                                  className={cn('h-7 text-xs gap-1', u.is_active ? 'text-destructive hover:text-destructive' : 'text-green-600 hover:text-green-600')}
+                                  onClick={() => handleToggleActive(u)}
                                 >
-                                  <Ban className="h-3.5 w-3.5" />
+                                  {u.is_active ? <><XCircle className="h-3.5 w-3.5" /> Désactiver</> : <><CheckCircle2 className="h-3.5 w-3.5" /> Activer</>}
                                 </Button>
                               </div>
                             </TableCell>
@@ -577,74 +613,127 @@ export default function UserManagement() {
       </Tabs>
 
       {/* ===== CREATE/EDIT DIALOG ===== */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-display">
-              {editingUserId ? 'Modifier l\'utilisateur' : 'Inviter un utilisateur'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingUserId
-                ? 'Modifiez le rôle et les permissions de cet utilisateur'
-                : 'Un email d\'invitation sera envoyé avec un lien de création de mot de passe (expire sous 48h)'
-              }
-            </DialogDescription>
+      <Dialog open={showDialog} onOpenChange={(v) => { if (!v) setShowPasswordField(false); setShowDialog(v); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader className="pb-0">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'h-10 w-10 rounded-full flex items-center justify-center shrink-0',
+                editingUserId ? 'bg-primary/10' : 'bg-green-500/10'
+              )}>
+                {editingUserId
+                  ? <Pencil className="h-5 w-5 text-primary" />
+                  : <Plus className="h-5 w-5 text-green-600" />
+                }
+              </div>
+              <div>
+                <DialogTitle className="font-display text-lg">
+                  {editingUserId ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}
+                </DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  {editingUserId
+                    ? 'Modifiez les informations, le rôle et les permissions'
+                    : 'Un email avec les identifiants sera envoyé automatiquement'
+                  }
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Nom complet</Label>
-                <Input
-                  placeholder="Jean Dupont"
-                  value={form.full_name}
-                  onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Email *</Label>
-                <Input
-                  type="email"
-                  placeholder="jean@example.com"
-                  value={form.email}
-                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {!editingUserId && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Mot de passe *</Label>
-                <Input
-                  type="password"
-                  placeholder="Minimum 6 caractères"
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                />
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Rôle *</Label>
-              <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ROLE_CONFIG).map(([key, cfg]) => (
-                    <SelectItem key={key} value={key}>
-                      <div className="flex items-center gap-2">
-                        <span>{cfg.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {form.role === 'zone_director' && (
-              <>
-                <Separator />
+          <div className="space-y-5 py-3">
+            {/* --- Identity section --- */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Identité</p>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Zone assignée *</Label>
+                  <Label className="text-xs">Nom complet</Label>
+                  <Input
+                    placeholder="Jean Dupont"
+                    value={form.full_name}
+                    onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Email *</Label>
+                  <Input
+                    type="email"
+                    placeholder="jean@example.com"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Password: always visible on create, toggle on edit */}
+              {!editingUserId ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Mot de passe *</Label>
+                  <div className="relative">
+                    <Input
+                      type={showPasswordField ? 'text' : 'password'}
+                      placeholder="Minimum 6 caractères"
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <button type="button" onClick={() => setShowPasswordField(!showPasswordField)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showPasswordField ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {showPasswordField ? (
+                    <>
+                      <Label className="text-xs">Nouveau mot de passe</Label>
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          placeholder="Laisser vide pour ne pas changer"
+                          value={form.password}
+                          onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                          className="pr-10"
+                        />
+                        <button type="button" onClick={() => { setShowPasswordField(false); setForm(f => ({ ...f, password: '' })); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowPasswordField(true)}>
+                      <KeyRound className="h-3.5 w-3.5" /> Réinitialiser le mot de passe
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* --- Role & Assignment section --- */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rôle & Affectation</p>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Rôle *</Label>
+                <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ROLE_CONFIG).map(([key, cfg]) => (
+                      <SelectItem key={key} value={key}>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0', cfg.color)}>{cfg.label}</Badge>
+                          <span className="text-xs text-muted-foreground">{cfg.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.role === 'zone_director' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Zone assignée *</Label>
                   <Select value={form.zone_id} onValueChange={v => setForm(f => ({ ...f, zone_id: v }))}>
                     <SelectTrigger><SelectValue placeholder="Sélectionner une zone" /></SelectTrigger>
                     <SelectContent>
@@ -656,14 +745,11 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-              </>
-            )}
+              )}
 
-            {form.role === 'branch_director' && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Agence dirigée *</Label>
+              {form.role === 'branch_director' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Agence dirigée *</Label>
                   <Select value={form.branch_ids[0] || ''} onValueChange={v => setForm(f => ({ ...f, branch_ids: [v] }))}>
                     <SelectTrigger><SelectValue placeholder="Sélectionner une agence" /></SelectTrigger>
                     <SelectContent>
@@ -673,36 +759,108 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-              </>
-            )}
-
+              )}
+            </div>
 
             {editingUserId && (
               <>
                 <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs font-semibold">Compte actif</Label>
-                    <p className="text-[10px] text-muted-foreground">Désactiver empêche la connexion</p>
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Statut</p>
+                  <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      {form.is_active
+                        ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        : <XCircle className="h-4 w-4 text-destructive" />
+                      }
+                      <div>
+                        <p className="text-xs font-medium">{form.is_active ? 'Compte actif' : 'Compte désactivé'}</p>
+                        <p className="text-[10px] text-muted-foreground">{form.is_active ? 'L\'utilisateur peut se connecter' : 'Connexion bloquée'}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={form.is_active}
+                      onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))}
+                    />
                   </div>
-                  <Switch
-                    checked={form.is_active}
-                    onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))}
-                  />
                 </div>
               </>
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setShowDialog(false)}>Annuler</Button>
             <Button
               onClick={editingUserId ? handleUpdateRole : handleInvite}
               disabled={saving}
               className="gap-1.5"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingUserId ? <Pencil className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
-              {editingUserId ? 'Mettre à jour' : 'Envoyer l\'invitation'}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingUserId ? <CheckCircle2 className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+              {editingUserId ? 'Enregistrer' : 'Créer et envoyer l\'invitation'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== DEACTIVATION CONFIRM ===== */}
+      <AlertDialog open={!!confirmDeactivate} onOpenChange={(v) => { if (!v) setConfirmDeactivate(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Désactiver {confirmDeactivate?.full_name} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'utilisateur ne pourra plus se connecter à la plateforme. Vous pourrez le réactiver à tout moment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => confirmDeactivate && doToggleActive(confirmDeactivate)}
+            >
+              Désactiver
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ===== RESET PASSWORD DIALOG ===== */}
+      <Dialog open={!!resetPwUser} onOpenChange={(v) => { if (!v) setResetPwUser(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                <KeyRound className="h-5 w-5 text-orange-500" />
+              </div>
+              <div>
+                <DialogTitle className="font-display">Réinitialiser le mot de passe</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">{resetPwUser?.full_name} — {resetPwUser?.email}</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nouveau mot de passe *</Label>
+              <div className="relative">
+                <Input
+                  type={resetPwShow ? 'text' : 'password'}
+                  placeholder="Minimum 6 caractères"
+                  value={resetPwValue}
+                  onChange={e => setResetPwValue(e.target.value)}
+                  className="pr-10"
+                  onKeyDown={e => e.key === 'Enter' && doResetPassword()}
+                />
+                <button type="button" onClick={() => setResetPwShow(!resetPwShow)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {resetPwShow ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Un email avec les nouveaux identifiants sera envoyé automatiquement.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setResetPwUser(null)}>Annuler</Button>
+            <Button onClick={doResetPassword} disabled={resetPwSaving || resetPwValue.length < 6} className="gap-1.5">
+              {resetPwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+              Réinitialiser
             </Button>
           </DialogFooter>
         </DialogContent>
