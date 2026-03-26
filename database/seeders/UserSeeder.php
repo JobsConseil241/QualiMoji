@@ -39,7 +39,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'organization_id' => $orgId,
                 'is_active' => true,
-                'role' => 'branch_manager',
+                'role' => 'branch_director',
             ],
             [
                 'name' => 'Julie Moreau',
@@ -48,7 +48,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'organization_id' => $orgId,
                 'is_active' => true,
-                'role' => 'branch_manager',
+                'role' => 'branch_director',
             ],
             [
                 'name' => 'Thomas Petit',

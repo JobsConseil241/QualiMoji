@@ -14,7 +14,8 @@
       "Bash(find /Users/primeclet/JOBS/QualiMoji-laravel/database/migrations -type f -name *user*branch* -o -name *branch*assignment*)",
       "Bash(grep -r \"hasRole\\\\|UserRole\\\\|role.*==\\\\|role.*!=\\\\|role.*in\" /Users/primeclet/JOBS/QualiMoji-laravel/app/Http/Controllers --include=*.php -l)",
       "Bash(find /Users/primeclet/JOBS/QualiMoji-laravel/app/Models -type f -name *.php)",
-      "Bash(grep -r \"Zone\\\\|zone\" /Users/primeclet/JOBS/QualiMoji-laravel/app/Models --include=*.php)"
+      "Bash(grep -r \"Zone\\\\|zone\" /Users/primeclet/JOBS/QualiMoji-laravel/app/Models --include=*.php)",
+      "Bash(grep -r customer_notified /Users/primeclet/JOBS/QualiMoji-laravel/resources/js --include=*.tsx --include=*.ts)"
     ]
   }
 }

@@ -2,7 +2,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'quality_director' | 'branch_manager' | 'it_admin';
+  role: 'admin' | 'quality_director' | 'zone_director' | 'branch_director' | 'it_admin' | 'viewer';
   avatar?: string;
 }
 
@@ -12,6 +12,7 @@ export interface Branch {
   city: string;
   address?: string;
   region: string;
+  zone_id?: string;
   satisfactionScore: number;
   totalFeedbacks: number;
   activeAlerts: number;
@@ -27,7 +28,7 @@ export interface Feedback {
   score: number;
   comment: string;
   category: string;
-  sentiment: 'positive' | 'negative';
+  sentiment: 'very_happy' | 'happy' | 'unhappy' | 'very_unhappy';
   clientName?: string;
   clientEmail?: string;
   clientPhone?: string;
@@ -45,7 +46,8 @@ export interface Alert {
   id: string;
   branchId: string;
   branchName: string;
-  type: 'critical' | 'warning' | 'info';
+  type: string;
+  severity?: string;
   message: string;
   isRead: boolean;
   createdAt: string;

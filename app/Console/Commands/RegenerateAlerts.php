@@ -17,7 +17,8 @@ class RegenerateAlerts extends Command
     {
         if ($this->option('flush')) {
             $count = Alert::count();
-            Alert::truncate();
+            \App\Models\NotificationLog::whereNotNull('alert_id')->update(['alert_id' => null]);
+            Alert::query()->delete();
             $this->info("Flushed {$count} old alerts.");
         }
 

@@ -61,9 +61,11 @@ interface NotifPrefs {
 
 /* ---------- defaults ---------- */
 const DEFAULT_THRESHOLDS: AlertThreshold[] = [
-  { key: 'dissatisfaction_rate', label: 'Alertes Insatisfaction', description: 'Alerte quand le taux d\'insatisfaits dépasse le seuil', threshold: 10, min: 1, max: 50, step: 1, unit: '%', period: 'week', severity: 'warning', enabled: true, isSlider: true },
-  { key: 'low_satisfaction', label: 'Satisfaction Basse', description: 'Alerte quand la satisfaction tombe en dessous du seuil', threshold: 70, min: 30, max: 100, step: 1, unit: '%', period: 'month', severity: 'critical', enabled: true, isSlider: true },
-  { key: 'consecutive_negative', label: 'Feedbacks Négatifs Consécutifs', description: 'Alerte après N feedbacks négatifs consécutifs', threshold: 3, min: 1, max: 20, step: 1, unit: '', period: 'day', severity: 'warning', enabled: true, isSlider: false },
+  { key: 'negative_feedback_threshold', label: 'Pic de feedbacks négatifs', description: 'Alerte quand N avis négatifs sont reçus dans une fenêtre de temps', threshold: 3, min: 1, max: 20, step: 1, unit: '', period: '24h', severity: 'high', enabled: true, isSlider: false },
+  { key: 'satisfaction_drop_threshold', label: 'Chute de satisfaction', description: 'Alerte quand la satisfaction chute de X% entre deux périodes', threshold: 15, min: 5, max: 50, step: 5, unit: '%', period: '24h', severity: 'medium', enabled: true, isSlider: true },
+  { key: 'consecutive_negative_threshold', label: 'Négatifs consécutifs', description: 'Alerte après N feedbacks négatifs d\'affilée', threshold: 3, min: 2, max: 10, step: 1, unit: '', period: 'temps réel', severity: 'medium', enabled: true, isSlider: false },
+  { key: 'low_satisfaction_threshold', label: 'Satisfaction basse', description: 'Alerte quand la satisfaction mensuelle tombe sous le seuil', threshold: 60, min: 30, max: 90, step: 5, unit: '%', period: 'mois', severity: 'high', enabled: true, isSlider: true },
+  { key: 'inactivity_threshold', label: 'Inactivité kiosque', description: 'Alerte si aucun feedback reçu depuis X heures', threshold: 48, min: 12, max: 168, step: 12, unit: 'h', period: 'continu', severity: 'medium', enabled: false, isSlider: true },
 ];
 
 const DEFAULT_CHANNELS: NotifChannel[] = [
@@ -106,7 +108,9 @@ export default function Settings() {
                 const row = globalRows.find((r: any) => r.config_key === t.key);
                 if (row) {
                   const v = row.config_value as any;
-                  return { ...t, threshold: v.threshold ?? t.threshold, period: v.period ?? t.period, severity: v.severity ?? t.severity, enabled: v.enabled ?? t.enabled };
+                  // Map backend field to generic threshold value
+                  const thresholdVal = v.threshold ?? v.drop_percent ?? v.hours ?? t.threshold;
+                  return { ...t, threshold: thresholdVal, severity: v.severity ?? t.severity, enabled: v.enabled ?? t.enabled };
                 }
                 return t;
               })
@@ -177,13 +181,19 @@ export default function Settings() {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      // Save KPI thresholds
+      // Save KPI thresholds — map to backend field names
       await api.post('/settings/kpi', {
-        thresholds: thresholds.map(t => ({
-          config_key: t.key,
-          branch_id: null,
-          config_value: { threshold: t.threshold, period: t.period, severity: t.severity, enabled: t.enabled },
-        })),
+        thresholds: thresholds.map(t => {
+          const base = { enabled: t.enabled, severity: t.severity };
+          let value: any = base;
+          if (t.key === 'negative_feedback_threshold') value = { ...base, threshold: t.threshold, period_hours: 24 };
+          else if (t.key === 'satisfaction_drop_threshold') value = { ...base, drop_percent: t.threshold };
+          else if (t.key === 'consecutive_negative_threshold') value = { ...base, threshold: t.threshold };
+          else if (t.key === 'low_satisfaction_threshold') value = { ...base, threshold: t.threshold };
+          else if (t.key === 'inactivity_threshold') value = { ...base, hours: t.threshold };
+          else value = { ...base, threshold: t.threshold };
+          return { config_key: t.key, branch_id: null, config_value: value };
+        }),
         branch_overrides: scopeMode === 'per_branch' ? branchOverrides : {},
       });
 
