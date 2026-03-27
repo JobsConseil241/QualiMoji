@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Bell, Gauge, Building2, Plus, X, Clock, Zap, MessageSquare, Users, MapPin, Monitor } from 'lucide-react';
+import { Save, Bell, Gauge, Building2, Plus, X, Clock, Zap, MessageSquare, Users, MapPin, Monitor, Mail, ExternalLink, HeadphonesIcon } from 'lucide-react';
 import WhatsAppTemplates from '@/components/settings/WhatsAppTemplates';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -282,6 +282,7 @@ export default function Settings() {
           {isAdmin && (
             <TabsTrigger value="users" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Utilisateurs</TabsTrigger>
           )}
+          <TabsTrigger value="support" className="gap-1.5"><HeadphonesIcon className="h-3.5 w-3.5" /> Support</TabsTrigger>
         </TabsList>
 
         {/* ==================== ORGANISATION TAB ==================== */}
@@ -601,6 +602,93 @@ export default function Settings() {
           </Card>
 
           <WhatsAppTemplates />
+        </TabsContent>
+
+        {/* ==================== SUPPORT TAB ==================== */}
+        <TabsContent value="support" className="space-y-6">
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-display flex items-center gap-2">
+                <HeadphonesIcon className="h-4 w-4" /> Support & Contact
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Besoin d'aide ? Contactez notre équipe pour toute question, suggestion ou signalement.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <a
+                href="mailto:info@qualimoji.jobs-conseil.host?subject=QualiMoji%20-%20Feedback%20%2F%20Support"
+                className="flex items-center gap-4 p-4 rounded-xl border hover:bg-accent/50 transition-colors group"
+              >
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                  <Mail className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">Envoyer un email</p>
+                  <p className="text-xs text-muted-foreground">info@qualimoji.jobs-conseil.host</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Questions, feedbacks, suggestions, bugs</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+              </a>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a
+                  href="mailto:info@qualimoji.jobs-conseil.host?subject=QualiMoji%20-%20Signalement%20de%20bug"
+                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                >
+                  <span className="text-lg">🐛</span>
+                  <div>
+                    <p className="text-xs font-semibold">Signaler un bug</p>
+                    <p className="text-[10px] text-muted-foreground">Un problème technique ?</p>
+                  </div>
+                </a>
+                <a
+                  href="mailto:info@qualimoji.jobs-conseil.host?subject=QualiMoji%20-%20Demande%20de%20fonctionnalit%C3%A9"
+                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                >
+                  <span className="text-lg">💡</span>
+                  <div>
+                    <p className="text-xs font-semibold">Demander une fonctionnalité</p>
+                    <p className="text-[10px] text-muted-foreground">Une idée d'amélioration ?</p>
+                  </div>
+                </a>
+                <a
+                  href="mailto:info@qualimoji.jobs-conseil.host?subject=QualiMoji%20-%20Question%20g%C3%A9n%C3%A9rale"
+                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                >
+                  <span className="text-lg">❓</span>
+                  <div>
+                    <p className="text-xs font-semibold">Poser une question</p>
+                    <p className="text-[10px] text-muted-foreground">Aide sur l'utilisation</p>
+                  </div>
+                </a>
+                <a
+                  href="mailto:info@qualimoji.jobs-conseil.host?subject=QualiMoji%20-%20Feedback%20positif"
+                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                >
+                  <span className="text-lg">⭐</span>
+                  <div>
+                    <p className="text-xs font-semibold">Donner un avis</p>
+                    <p className="text-[10px] text-muted-foreground">Votre feedback compte</p>
+                  </div>
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <span className="text-sm">🚀</span>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">QualiMoji v1.0</p>
+                  <p>Propulsé par JOBS Conseil — Plateforme Qualité & Satisfaction Client</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
