@@ -280,7 +280,7 @@ POST /api/kiosk/feedbacks
 
 | Fichier | Action |
 |---|---|
-| `resources/js/pages/kiosk/KioskFlow.tsx` (ou équivalent) | Modifié — branchement |
+| `resources/js/pages/Kiosk.tsx` | Modifié — branchement selon mode |
 | `resources/js/components/kiosk/OpenQuestionsWizard.tsx` | Nouveau |
 | `resources/js/components/kiosk/question-types/ShortText.tsx` | Nouveau |
 | `resources/js/components/kiosk/question-types/LongText.tsx` | Nouveau |
@@ -329,10 +329,10 @@ Ajout d'un sélecteur **« Mode questionnaire »** (All / Quadrimoji / Open) pou
 
 | Fichier | Action |
 |---|---|
-| `app/Services/ReportBuilder.php` (ou équivalent) | Branchement par mode |
-| `app/Exports/*.php` | Feuilles conditionnelles |
-| `resources/views/reports/pdf/*.blade.php` | Sections conditionnelles |
-| `resources/js/pages/reports/*.tsx` | Ajout filtre mode |
+| `app/Http/Controllers/Api/ReportController.php` | Branchement par mode + sections séparées |
+| `resources/js/pages/Reports.tsx` | Ajout filtre « Mode questionnaire » |
+
+Note : la génération PDF/Excel actuelle passe par `ReportController` ; les exports (classes Excel / vues blade) pourront être extraits à l'occasion de cette réforme si la logique conditionnelle devient trop volumineuse, mais ce n'est pas un prérequis.
 
 ## 8. Migration & rollout
 
