@@ -7,6 +7,7 @@ use App\Models\QuestionConfig;
 use App\Models\KioskConfig;
 use App\Models\KpiConfig;
 use App\Models\NotificationConfig;
+use App\Models\OpenQuestion;
 use App\Models\Organization;
 use App\Models\AuditLog;
 use App\Models\Branch;
@@ -160,6 +161,79 @@ class SettingsController extends Controller
             'mode' => $validated['mode'],
             'scope' => $targetType,
         ]);
+    }
+
+    // ── Open Questions ──
+
+    public function getOpenQuestions(Request $request)
+    {
+        $user = $request->user();
+        $branchId = $request->get('branch_id');
+
+        $query = OpenQuestion::where('organization_id', $user->organization_id);
+        if ($branchId !== null) {
+            $query->where('branch_id', $branchId);
+        } else {
+            $query->whereNull('branch_id');
+        }
+
+        $configs = $query->orderBy('sort_order')->get();
+
+        return response()->json(['open_questions' => $configs]);
+    }
+
+    public function saveOpenQuestions(Request $request)
+    {
+        $validated = $request->validate([
+            'branch_id' => 'nullable|string|exists:branches,id',
+            'configs' => 'required|array|max:10',
+            'configs.*.id' => 'nullable|string',
+            'configs.*.label' => 'required|string|max:300',
+            'configs.*.type' => 'required|in:short_text,long_text,rating_1_5,rating_1_10,single_choice,multi_choice',
+            'configs.*.options' => 'nullable|array',
+            'configs.*.options.*.id' => 'required_with:configs.*.options|string',
+            'configs.*.options.*.label' => 'required_with:configs.*.options|string|max:200',
+            'configs.*.is_required' => 'boolean',
+            'configs.*.is_active' => 'boolean',
+            'configs.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        $user = $request->user();
+        $branchId = $validated['branch_id'] ?? null;
+
+        if ($branchId) {
+            $this->authorizeBranchMode($user, $branchId);
+        } elseif (!in_array($user->role, ['admin', 'it_admin', 'zone_director'], true)) {
+            abort(403);
+        }
+
+        OpenQuestion::where('organization_id', $user->organization_id)
+            ->where(fn ($q) => $branchId ? $q->where('branch_id', $branchId) : $q->whereNull('branch_id'))
+            ->delete();
+
+        $saved = [];
+        foreach ($validated['configs'] as $cfg) {
+            $saved[] = OpenQuestion::create([
+                'organization_id' => $user->organization_id,
+                'branch_id' => $branchId,
+                'label' => $cfg['label'],
+                'type' => $cfg['type'],
+                'options' => $cfg['options'] ?? null,
+                'is_required' => $cfg['is_required'] ?? false,
+                'is_active' => $cfg['is_active'] ?? true,
+                'sort_order' => $cfg['sort_order'],
+            ]);
+        }
+
+        AuditLog::create([
+            'actor_id' => $user->id,
+            'actor_email' => $user->email,
+            'action' => 'open_questions.updated',
+            'target_type' => 'open_question',
+            'details' => ['count' => count($saved), 'branch_id' => $branchId],
+        ]);
+
+        return response()->json(['open_questions' => $saved]);
     }
 
     private function authorizeBranchMode($user, string $branchId): void
