@@ -69,4 +69,23 @@ class KioskConfigModeTest extends TestCase
 
         $resp->assertOk()->assertJsonPath('questionnaire_mode', 'open');
     }
+
+    public function test_feedback_stores_mode_from_branch(): void
+    {
+        $org = \App\Models\Organization::create(['name' => 'O', 'questionnaire_mode' => 'open']);
+        $branch = \App\Models\Branch::create([
+            'organization_id' => $org->id, 'name' => 'B',
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/kiosk/feedback', [
+            'branch_id' => $branch->id,
+            'sentiment' => 'happy',
+            'follow_up_responses' => [
+                ['question_id' => '00000000-0000-0000-0000-000000000001', 'type' => 'short_text', 'answer' => 'Great'],
+            ],
+        ])->assertSuccessful();
+
+        $this->assertSame('open', \App\Models\Feedback::first()->questionnaire_mode);
+    }
 }

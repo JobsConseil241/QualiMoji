@@ -59,6 +59,9 @@ class FeedbackController extends Controller
             'wants_callback' => 'boolean',
         ]);
 
+        $branch = Branch::findOrFail($validated['branch_id']);
+        $validated['questionnaire_mode'] = $branch->effectiveQuestionnaireMode();
+
         $feedback = Feedback::create($validated);
 
         // Dispatch jobs
