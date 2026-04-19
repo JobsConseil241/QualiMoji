@@ -9,6 +9,7 @@ use App\Models\KpiConfig;
 use App\Models\NotificationConfig;
 use App\Models\Organization;
 use App\Models\AuditLog;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -97,6 +98,94 @@ class SettingsController extends Controller
         ]);
 
         return response()->json(['question_configs' => $saved]);
+    }
+
+    // ── Questionnaire Mode ──
+
+    public function getQuestionnaireMode(Request $request)
+    {
+        $user = $request->user();
+        $org = Organization::find($user->organization_id);
+
+        $branches = Branch::where('organization_id', $user->organization_id)
+            ->get(['id', 'name', 'questionnaire_mode'])
+            ->map(fn ($b) => [
+                'branch_id' => $b->id,
+                'name' => $b->name,
+                'mode' => $b->questionnaire_mode,
+            ]);
+
+        return response()->json([
+            'org_mode' => $org?->questionnaire_mode ?? 'quadrimoji',
+            'branches' => $branches,
+        ]);
+    }
+
+    public function updateQuestionnaireMode(Request $request)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'mode' => 'required|in:quadrimoji,open',
+            'branch_id' => 'nullable|string|exists:branches,id',
+            'wipe_other_mode_config' => 'nullable|boolean',
+        ]);
+
+        if (!empty($validated['branch_id'])) {
+            $this->authorizeBranchMode($user, $validated['branch_id']);
+            $branch = Branch::findOrFail($validated['branch_id']);
+            $branch->update(['questionnaire_mode' => $validated['mode']]);
+            $target = $branch;
+            $targetType = 'branch';
+        } else {
+            if (!in_array($user->role, ['admin', 'it_admin', 'zone_director'], true)) {
+                abort(403, 'Only admin or zone director can change org mode');
+            }
+            $org = Organization::findOrFail($user->organization_id);
+            $org->update(['questionnaire_mode' => $validated['mode']]);
+            $target = $org;
+            $targetType = 'organization';
+        }
+
+        AuditLog::create([
+            'actor_id' => $user->id,
+            'actor_email' => $user->email,
+            'action' => 'questionnaire_mode.updated',
+            'target_type' => $targetType,
+            'target_id' => $target->id,
+            'details' => ['mode' => $validated['mode']],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'mode' => $validated['mode'],
+            'scope' => $targetType,
+        ]);
+    }
+
+    private function authorizeBranchMode($user, string $branchId): void
+    {
+        if (in_array($user->role, ['admin', 'it_admin'], true)) {
+            return;
+        }
+        $branch = Branch::findOrFail($branchId);
+        if ($branch->organization_id !== $user->organization_id) {
+            abort(403);
+        }
+        if ($user->role === 'zone_director') {
+            $userZoneId = $user->userRole?->zone_id;
+            if ($userZoneId === null || $branch->zone_id !== $userZoneId) {
+                abort(403);
+            }
+            return;
+        }
+        if ($user->role === 'branch_director') {
+            $assigned = $user->branches()->where('branches.id', $branchId)->exists();
+            if (!$assigned) {
+                abort(403);
+            }
+            return;
+        }
+        abort(403);
     }
 
     // ── Kiosk Config ──

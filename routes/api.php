@@ -74,6 +74,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/users/invite', [UserManagementController::class, 'store']);
         Route::put('/users/{user}', [UserManagementController::class, 'update']);
         Route::get('/audit-logs', [SettingsController::class, 'getAuditLogs']);
+        Route::get('/questionnaire-mode', [SettingsController::class, 'getQuestionnaireMode']);
+        Route::put('/questionnaire-mode', [SettingsController::class, 'updateQuestionnaireMode']);
     });
 
     // WhatsApp Templates
