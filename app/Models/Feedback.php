@@ -14,6 +14,7 @@ class Feedback extends Model
     protected $fillable = [
         'branch_id',
         'sentiment',
+        'questionnaire_mode',
         'follow_up_responses',
         'customer_name',
         'customer_gender',
