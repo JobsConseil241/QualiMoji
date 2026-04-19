@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { fetchBranches } from '@/services/dataService';
-import { QuestionsConfig, DEFAULT_CONFIGS, type QuestionConfig } from '@/components/settings/QuestionsConfig';
+import QuestionnaireSettings from '@/components/settings/QuestionnaireSettings';
 import UserManagement from '@/components/settings/UserManagement';
 import OrganizationConfig from '@/components/settings/OrganizationConfig';
 import BranchManagement from '@/components/settings/BranchManagement';
@@ -86,7 +86,6 @@ export default function Settings() {
   const [branchOverrides, setBranchOverrides] = useState<Record<string, Partial<AlertThreshold>[]>>({});
   const [saving, setSaving] = useState(false);
   const [newRecipient, setNewRecipient] = useState<Record<string, string>>({});
-  const [questionConfigs, setQuestionConfigs] = useState<QuestionConfig[]>(DEFAULT_CONFIGS);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
 
   /* load from DB */
@@ -155,22 +154,6 @@ export default function Settings() {
           }
         }
 
-        // Load question configs
-        const { data: qData } = await api.get('/settings/questions');
-        const qRows = qData?.question_configs ?? qData?.data ?? (Array.isArray(qData) ? qData : []);
-        if (qRows.length > 0) {
-          const loaded: QuestionConfig[] = qRows.map((row: any) => ({
-            sentiment: row.sentiment,
-            emoji: row.emoji || '🙂',
-            label: row.label || row.sentiment,
-            question: row.question || '',
-            options: Array.isArray(row.options) ? (row.options as any[]).map((o: any, i: number) => ({ id: o.id || crypto.randomUUID(), label: o.label || '', order: o.order ?? i })) : [],
-            allowFreeText: row.allow_free_text ?? true,
-            isActive: row.is_active ?? true,
-          }));
-          const defaultsNotInDb = DEFAULT_CONFIGS.filter((d) => !loaded.some((l) => l.sentiment === d.sentiment));
-          setQuestionConfigs([...loaded, ...defaultsNotInDb]);
-        }
       } catch (err) {
         console.error('Failed to load settings:', err);
       }
@@ -209,27 +192,13 @@ export default function Settings() {
         })),
       });
 
-      // Save question configs
-      await api.post('/settings/questions', {
-        configs: questionConfigs.map((qc, index) => ({
-          sentiment: qc.sentiment,
-          question: qc.question,
-          options: qc.options,
-          allow_free_text: qc.allowFreeText,
-          is_active: qc.isActive,
-          emoji: qc.emoji,
-          label: qc.label,
-          sort_order: index,
-        })),
-      });
-
       toast({ title: 'Paramètres enregistrés', description: 'Vos configurations ont été sauvegardées avec succès.' });
     } catch (err: any) {
       toast({ title: 'Erreur', description: err.response?.data?.message || err.message || 'Une erreur est survenue', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
-  }, [thresholds, channels, prefs, scopeMode, branchOverrides, questionConfigs, toast]);
+  }, [thresholds, channels, prefs, scopeMode, branchOverrides, toast]);
 
   /* helpers */
   const updateThreshold = (key: string, updates: Partial<AlertThreshold>) => {
@@ -276,7 +245,7 @@ export default function Settings() {
             <TabsTrigger value="branches" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Agences</TabsTrigger>
           )}
           <TabsTrigger value="kpi" className="gap-1.5"><Gauge className="h-3.5 w-3.5" /> Seuils KPI</TabsTrigger>
-          <TabsTrigger value="questions" className="gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> Questions</TabsTrigger>
+          <TabsTrigger value="questions" className="gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> Questionnaire</TabsTrigger>
           <TabsTrigger value="kiosk" className="gap-1.5"><Monitor className="h-3.5 w-3.5" /> Kiosk</TabsTrigger>
           <TabsTrigger value="notifications" className="gap-1.5"><Bell className="h-3.5 w-3.5" /> Notifications</TabsTrigger>
           {isAdmin && (
@@ -472,7 +441,7 @@ export default function Settings() {
 
         {/* ==================== QUESTIONS TAB ==================== */}
         <TabsContent value="questions" className="space-y-6">
-          <QuestionsConfig configs={questionConfigs} onChange={setQuestionConfigs} />
+          <QuestionnaireSettings />
         </TabsContent>
 
         {/* ==================== KIOSK TAB ==================== */}
