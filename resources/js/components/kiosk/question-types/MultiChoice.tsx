@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { OpenQuestionOption } from '@/types/questionnaire';
 
@@ -16,34 +15,40 @@ export default function MultiChoice({ options, value, onChange, otherTexts, onOt
   const toggle = (id: string) => {
     onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
   };
+
+  const selectedOthers = options.filter((o) => o.is_other === true && value.includes(o.id));
+
   return (
-    <div className="space-y-2">
-      {options.map((opt) => {
-        const selected = value.includes(opt.id);
-        const showOther = selected && opt.is_other === true;
-        return (
-          <div key={opt.id} className="space-y-2">
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-center gap-2">
+        {options.map((opt) => {
+          const selected = value.includes(opt.id);
+          return (
             <Button
+              key={opt.id}
               variant={selected ? 'default' : 'outline'}
-              className={cn('w-full justify-between h-14 text-base', selected && 'ring-2 ring-primary')}
+              className={cn(
+                'rounded-full px-6 py-5 h-auto text-base whitespace-normal',
+                selected && 'ring-2 ring-primary',
+              )}
               onClick={() => toggle(opt.id)}
             >
-              <span>{opt.label || 'Autre'}</span>
-              {selected && <Check className="h-4 w-4" />}
+              {opt.label || 'Autre'}
             </Button>
-            {showOther && (
-              <Input
-                autoFocus
-                value={otherTexts?.[opt.id] ?? ''}
-                onChange={(e) => onOtherTextChange?.(opt.id, e.target.value)}
-                placeholder="Précisez…"
-                maxLength={200}
-                className="ml-4 w-[calc(100%-1rem)]"
-              />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {selectedOthers.map((opt) => (
+        <Input
+          key={opt.id}
+          value={otherTexts?.[opt.id] ?? ''}
+          onChange={(e) => onOtherTextChange?.(opt.id, e.target.value)}
+          placeholder={`Précisez pour « ${opt.label || 'Autre'} »…`}
+          maxLength={200}
+          className="max-w-md mx-auto"
+        />
+      ))}
     </div>
   );
 }
