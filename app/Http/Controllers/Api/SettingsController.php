@@ -305,6 +305,11 @@ class SettingsController extends Controller
             'offline_mode_enabled' => 'boolean',
             'screensaver_slides' => 'nullable|array',
             'message_templates' => 'nullable|array',
+            'wizard_intro_messages' => 'nullable|array',
+            'wizard_intro_messages.very_happy' => 'nullable|string|max:500',
+            'wizard_intro_messages.happy' => 'nullable|string|max:500',
+            'wizard_intro_messages.unhappy' => 'nullable|string|max:500',
+            'wizard_intro_messages.very_unhappy' => 'nullable|string|max:500',
             'footer_text' => 'nullable|string|max:255',
         ]);
 

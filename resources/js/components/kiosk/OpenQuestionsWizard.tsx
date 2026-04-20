@@ -12,6 +12,7 @@ import type { OpenAnswer, OpenQuestion } from '@/types/questionnaire';
 interface Props {
   questions: OpenQuestion[];
   onSubmit: (answers: OpenAnswer[]) => void;
+  introMessage?: string;
 }
 
 function isEmpty(type: OpenQuestion['type'], value: unknown): boolean {
@@ -40,7 +41,7 @@ function missingOtherText(q: OpenQuestion, value: unknown, otherTexts: Record<st
   return false;
 }
 
-export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
+export default function OpenQuestionsWizard({ questions, onSubmit, introMessage }: Props) {
   const active = useMemo(
     () => questions.filter((q) => q.is_active).sort((a, b) => a.sort_order - b.sort_order),
     [questions],
@@ -122,6 +123,11 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-3 p-4 max-h-[calc(100vh-10rem)]">
+      {introMessage && idx === 0 && (
+        <p className="text-center text-sm md:text-base text-muted-foreground px-4 flex-shrink-0 italic">
+          {introMessage}
+        </p>
+      )}
       <div className="flex justify-center gap-1.5 flex-shrink-0">
         {active.map((_, i) => (
           <span key={i} className={cn('h-1.5 w-1.5 rounded-full', i <= idx ? 'bg-primary' : 'bg-muted')} />

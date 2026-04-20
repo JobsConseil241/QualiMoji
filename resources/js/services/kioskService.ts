@@ -63,6 +63,7 @@ export async function fetchKioskConfig(branchId: string) {
         soundsEnabled: raw?.sounds_enabled ?? false,
         hapticEnabled: raw?.haptic_enabled ?? true,
         offlineModeEnabled: raw?.offline_mode_enabled ?? true,
+        wizardIntroMessages: raw?.wizard_intro_messages ?? {},
         screensaverSlides: (raw?.screensaver_slides ?? []).map((s: any) => ({
             id: s.id ?? crypto.randomUUID(),
             imageUrl: s.imageUrl ?? s.image_url ?? '',

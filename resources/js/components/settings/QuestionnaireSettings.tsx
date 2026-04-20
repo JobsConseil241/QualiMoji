@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -17,6 +18,22 @@ import type {
   QuestionnaireMode, OpenQuestion, BranchModeEntry,
 } from '@/types/questionnaire';
 
+type SentimentKey = 'very_happy' | 'happy' | 'unhappy' | 'very_unhappy';
+
+const DEFAULT_INTRO_MESSAGES: Record<SentimentKey, string> = {
+  very_happy: 'Formidable ! 🎉 Votre satisfaction nous fait plaisir. Dites-nous ce qui a rendu votre visite exceptionnelle.',
+  happy: 'Merci pour votre confiance. Vos réponses nous aident à maintenir ce niveau de service.',
+  unhappy: "Nous regrettons que votre expérience n'ait pas été à la hauteur. Vos réponses nous aideront à progresser.",
+  very_unhappy: "Nous sommes sincèrement désolés. Votre témoignage est précieux — prenons le temps d'écouter pour corriger ce qui doit l'être.",
+};
+
+const SENTIMENT_META: Record<SentimentKey, { emoji: string; label: string }> = {
+  very_happy: { emoji: '😊', label: 'Très satisfait' },
+  happy: { emoji: '🙂', label: 'Satisfait' },
+  unhappy: { emoji: '😕', label: 'Insatisfait' },
+  very_unhappy: { emoji: '😞', label: 'Très insatisfait' },
+};
+
 export default function QuestionnaireSettings() {
   const { toast } = useToast();
   const [orgMode, setOrgMode] = useState<QuestionnaireMode>('quadrimoji');
@@ -26,17 +43,20 @@ export default function QuestionnaireSettings() {
   const [saving, setSaving] = useState(false);
   const [pendingModeChange, setPendingModeChange] = useState<QuestionnaireMode | null>(null);
   const [editingBranch, setEditingBranch] = useState<{ branch: BranchModeEntry; mode: QuestionnaireMode } | null>(null);
+  const [introMessages, setIntroMessages] = useState<Partial<Record<SentimentKey, string>>>({});
 
   const load = useCallback(async () => {
-    const [modeRes, quadRes, openRes] = await Promise.all([
+    const [modeRes, quadRes, openRes, kioskRes] = await Promise.all([
       api.get('/settings/questionnaire-mode'),
       api.get('/settings/questions'),
       api.get('/settings/open-questions'),
+      api.get('/settings/kiosk'),
     ]);
     setOrgMode(modeRes.data.org_mode);
     setBranches(modeRes.data.branches);
     setQuadConfigs(quadRes.data.question_configs ?? []);
     setOpenQuestions(openRes.data.open_questions ?? []);
+    setIntroMessages(kioskRes.data.kiosk_config?.wizard_intro_messages ?? {});
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -71,6 +91,16 @@ export default function QuestionnaireSettings() {
         configs: openQuestions.map((q, i) => ({ ...q, sort_order: i })),
       });
       toast({ title: 'Questions enregistrées' });
+    } finally { setSaving(false); }
+  };
+
+  const saveIntroMessages = async () => {
+    setSaving(true);
+    try {
+      await api.post('/settings/kiosk', {
+        wizard_intro_messages: introMessages,
+      });
+      toast({ title: 'Messages d\'introduction enregistrés' });
     } finally { setSaving(false); }
   };
 
@@ -116,7 +146,37 @@ export default function QuestionnaireSettings() {
             <>
               <Label>Questions ouvertes (1-10)</Label>
               <OpenQuestionsEditor questions={openQuestions} onChange={setOpenQuestions} />
-              <Button onClick={saveOpen} disabled={saving}>Enregistrer</Button>
+              <Button onClick={saveOpen} disabled={saving}>Enregistrer les questions</Button>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Messages d'introduction du wizard</CardTitle>
+                  <CardDescription className="text-xs">
+                    Affiché au-dessus des questions selon le smiley choisi par le client. Laissez vide pour utiliser le texte par défaut.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {(Object.keys(SENTIMENT_META) as SentimentKey[]).map((key) => (
+                    <div key={key} className="space-y-1.5">
+                      <Label className="text-xs flex items-center gap-2">
+                        <span className="text-lg">{SENTIMENT_META[key].emoji}</span>
+                        {SENTIMENT_META[key].label}
+                      </Label>
+                      <Textarea
+                        value={introMessages[key] ?? ''}
+                        onChange={(e) => setIntroMessages((prev) => ({ ...prev, [key]: e.target.value }))}
+                        placeholder={DEFAULT_INTRO_MESSAGES[key]}
+                        rows={2}
+                        maxLength={500}
+                        className="text-sm"
+                      />
+                    </div>
+                  ))}
+                  <Button onClick={saveIntroMessages} disabled={saving} size="sm">
+                    Enregistrer les messages
+                  </Button>
+                </CardContent>
+              </Card>
             </>
           )}
         </TabsContent>

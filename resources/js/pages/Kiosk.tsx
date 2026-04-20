@@ -363,15 +363,28 @@ function KioskInner() {
             </div>
           )}
 
-          {step === 'open_wizard' && (
-            <OpenQuestionsWizard
-              questions={((config as any)?.openQuestions ?? []) as OpenQuestion[]}
-              onSubmit={(answers) => {
-                setOpenAnswers(answers);
-                handleSubmitFeedback(answers);
-              }}
-            />
-          )}
+          {step === 'open_wizard' && (() => {
+            const DEFAULT_WIZARD_INTRO: Record<string, string> = {
+              very_happy: 'Formidable ! 🎉 Votre satisfaction nous fait plaisir. Dites-nous ce qui a rendu votre visite exceptionnelle.',
+              happy: 'Merci pour votre confiance. Vos réponses nous aident à maintenir ce niveau de service.',
+              unhappy: "Nous regrettons que votre expérience n'ait pas été à la hauteur. Vos réponses nous aideront à progresser.",
+              very_unhappy: "Nous sommes sincèrement désolés. Votre témoignage est précieux — prenons le temps d'écouter pour corriger ce qui doit l'être.",
+            };
+            const customMessages = ((config as any)?.wizardIntroMessages ?? {}) as Record<string, string>;
+            const introMessage = selectedSentiment
+              ? (customMessages[selectedSentiment]?.trim() || DEFAULT_WIZARD_INTRO[selectedSentiment])
+              : undefined;
+            return (
+              <OpenQuestionsWizard
+                questions={((config as any)?.openQuestions ?? []) as OpenQuestion[]}
+                introMessage={introMessage}
+                onSubmit={(answers) => {
+                  setOpenAnswers(answers);
+                  handleSubmitFeedback(answers);
+                }}
+              />
+            );
+          })()}
 
           {step === 'contact' && (
             <div className="w-full max-w-md mx-auto text-center space-y-6">
