@@ -121,20 +121,20 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
   const isLast = idx === active.length - 1;
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4 p-4 flex flex-col">
-      <div className="flex justify-center gap-1.5">
+    <div className="w-full max-w-2xl mx-auto flex flex-col gap-3 p-4 max-h-[calc(100vh-10rem)]">
+      <div className="flex justify-center gap-1.5 flex-shrink-0">
         {active.map((_, i) => (
           <span key={i} className={cn('h-1.5 w-1.5 rounded-full', i <= idx ? 'bg-primary' : 'bg-muted')} />
         ))}
       </div>
-      <p className="text-center text-[11px] text-muted-foreground">Question {idx + 1} sur {active.length}</p>
+      <p className="text-center text-[11px] text-muted-foreground flex-shrink-0">Question {idx + 1} sur {active.length}</p>
 
-      <h2 className="text-lg md:text-xl font-semibold text-center px-4">
+      <h2 className="text-base sm:text-lg md:text-xl font-semibold text-center px-2 flex-shrink-0">
         {q.label}
         {q.is_required && <span className="text-destructive ml-1">*</span>}
       </h2>
 
-      <div className="min-h-0 flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto py-2">
         <Renderer />
       </div>
 
