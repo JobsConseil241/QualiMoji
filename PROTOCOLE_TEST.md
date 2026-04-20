@@ -120,6 +120,25 @@
 
 ---
 
+## 11. Questionnaire — Modes Quadrimoji & Ouvert
+
+| # | Test | Action | Résultat attendu |
+|---|------|--------|-----------------|
+| 11.1 | Mode org par défaut | Fresh install ou org existante | Mode = `quadrimoji`, aucun changement visible |
+| 11.2 | Basculer l'org en mode Open | Settings > Questionnaire > Organisation, cocher « Questions ouvertes » | Dialog de confirmation avec 3 options (Annuler / Conserver / Supprimer) |
+| 11.3 | Sauver des questions ouvertes | Ajouter 3 questions (tous types), Enregistrer | Questions persistées, rechargement OK |
+| 11.4 | Limite 10 questions | Tenter d'ajouter la 11e | Bouton désactivé, compteur à 10/10 |
+| 11.5 | Kiosque — wizard | Ouvrir le kiosque d'une agence en mode Open | Smileys affichés puis wizard une question par écran avec indicateur de progression |
+| 11.6 | Obligatoire bloque Suivant | Laisser une question obligatoire vide | Bouton « Suivant » désactivé, message rouge |
+| 11.7 | Surcharge agence | Settings > Questionnaire > Agences, surcharger une agence | Badge mode change, kiosque de l'agence suit la surcharge |
+| 11.8 | Héritage agence | Cliquer « Hériter » sur une agence surchargée | Mode redevient celui de l'org, badge « hérité » |
+| 11.9 | Feedback taggé | Soumettre un feedback en chaque mode | `feedbacks.questionnaire_mode` correct |
+| 11.10 | Filtre mode dans Reports | Dans Reports, sélectionner « Questions ouvertes » et générer un rapport | Le rapport ne contient que les feedbacks en mode Open |
+| 11.11 | Permission dir. agence | Se connecter en directeur d'agence, surcharger son agence | Autorisé. Changer le mode org → 403 |
+| 11.12 | Types de questions | Configurer chaque type (texte court/long, note 1-5/1-10, choix unique/multiple) | Kiosque affiche le bon renderer pour chaque type |
+
+---
+
 ## Comptes de test
 
 | Rôle | Email | Mot de passe | Périmètre |
