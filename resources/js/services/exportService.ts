@@ -4,6 +4,39 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+function extractComment(followUpResponses: any, openQuestionsMap?: Record<string, any>): string {
+  if (!followUpResponses) return '';
+  // Open mode: array of {question_id, type, answer, other_texts?}
+  if (Array.isArray(followUpResponses)) {
+    return followUpResponses
+      .map((r: any) => {
+        const q = openQuestionsMap?.[r.question_id];
+        const opts: any[] = Array.isArray(q?.options) ? q.options : [];
+        const labelOf = (id: string) => opts.find((o: any) => o.id === id)?.label ?? id;
+        const a = r?.answer;
+        let base: string | null = null;
+        if (a === null || a === undefined) base = null;
+        else if (Array.isArray(a)) base = a.map(labelOf).join(', ');
+        else if (typeof a === 'string' && opts.length) base = labelOf(a);
+        else base = String(a);
+        const other = r?.other_texts && typeof r.other_texts === 'object'
+          ? Object.values(r.other_texts).filter((t) => typeof t === 'string' && t.trim() !== '').join(' / ')
+          : '';
+        if (!base && !other) return null;
+        const qLabel = q?.label ? `${q.label} : ` : '';
+        if (other) return base ? `${qLabel}${base} (autre : ${other})` : `${qLabel}autre : ${other}`;
+        return `${qLabel}${base}`;
+      })
+      .filter((v: string | null) => v !== null && v !== '')
+      .join(' | ');
+  }
+  // Quadrimoji object shape
+  return followUpResponses.freeText
+    || followUpResponses.comment
+    || followUpResponses.selectedOptions?.join(', ')
+    || '';
+}
+
 export interface ReportData {
   title: string;
   type: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -307,6 +340,7 @@ export function buildReportData(
     feedbacks?: any[];
     alerts?: any[];
     zones?: any[];
+    openQuestionsMap?: Record<string, any>;
   },
   options?: {
     includeBranches?: boolean;
@@ -322,6 +356,7 @@ export function buildReportData(
   const allAlerts = sourceData.alerts ?? [];
   const allZones = sourceData.zones ?? [];
   const stats = sourceData.stats ?? {};
+  const openQuestionsMap = sourceData.openQuestionsMap;
 
   // Zone lookup by ID
   const zoneMap: Record<string, string> = {};
@@ -407,7 +442,7 @@ export function buildReportData(
             branch: branch?.name ?? '',
             score: sentimentScores[f.sentiment] || 3,
             sentiment: sentimentLabels[f.sentiment] || f.sentiment,
-            comment: f.follow_up_responses?.freeText || f.follow_up_responses?.comment || f.follow_up_responses?.selectedOptions?.join(', ') || '',
+            comment: extractComment(f.follow_up_responses, openQuestionsMap),
             category: f.sentiment,
           };
         })

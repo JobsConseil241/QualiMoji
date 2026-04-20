@@ -8,6 +8,8 @@ import { useInactivity } from '@/hooks/useInactivity';
 import { useAutoReset } from '@/hooks/useAutoReset';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { KioskErrorBoundary } from '@/components/kiosk/KioskErrorBoundary';
+import OpenQuestionsWizard from '@/components/kiosk/OpenQuestionsWizard';
+import type { OpenAnswer, OpenQuestion } from '@/types/questionnaire';
 import Screensaver from '@/components/kiosk/Screensaver';
 import OfflineBadge from '@/components/kiosk/OfflineBadge';
 import PageTransition from '@/components/kiosk/PageTransition';
@@ -18,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
-type Step = 'sentiment' | 'followup' | 'contact' | 'thankyou';
+type Step = 'sentiment' | 'followup' | 'open_wizard' | 'contact' | 'thankyou';
 
 function KioskInner() {
   const { branchId } = useParams<{ branchId: string }>();
@@ -39,6 +41,7 @@ function KioskInner() {
   const [submitting, setSubmitting] = useState(false);
   const [showScreensaver, setShowScreensaver] = useState(false);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+  const [openAnswers, setOpenAnswers] = useState<OpenAnswer[] | null>(null);
 
   // Track previous step for direction
   const prevStepRef = useRef<Step>('sentiment');
@@ -55,6 +58,7 @@ function KioskInner() {
     setSelectedSentiment(null);
     setSelectedOptions([]);
     setFreeText('');
+    setOpenAnswers(null);
     setContactLastName('');
     setContactFirstName('');
     setContactGender(null);
@@ -88,7 +92,7 @@ function KioskInner() {
 
   // Navigate steps with direction tracking
   const goToStep = useCallback((newStep: Step) => {
-    const order: Step[] = ['sentiment', 'followup', 'contact', 'thankyou'];
+    const order: Step[] = ['sentiment', 'followup', 'open_wizard', 'contact', 'thankyou'];
     const currentIdx = order.indexOf(step);
     const newIdx = order.indexOf(newStep);
     setDirection(newIdx >= currentIdx ? 'forward' : 'backward');
@@ -101,7 +105,9 @@ function KioskInner() {
     setSelectedSentiment(sentiment);
     setSelectedOptions([]);
     setFreeText('');
-    goToStep('followup');
+    setOpenAnswers(null);
+    const mode = (config as any)?.questionnaireMode ?? 'quadrimoji';
+    goToStep(mode === 'open' ? 'open_wizard' : 'followup');
   };
 
   // Toggle option
@@ -113,18 +119,21 @@ function KioskInner() {
   const [savedFeedbackId, setSavedFeedbackId] = useState<string | null>(null);
 
   // Submit feedback (saves to DB, then shows contact form)
-  const handleSubmitFeedback = async () => {
+  const handleSubmitFeedback = async (openAnswersOverride?: OpenAnswer[]) => {
     if (!branchId || !selectedSentiment) return;
     setSubmitting(true);
 
+    const mode = (config as any)?.questionnaireMode ?? 'quadrimoji';
     const feedbackPayload = {
       branchId,
       sentiment: selectedSentiment,
-      followUpResponses: {
-        question: currentQuestion?.question,
-        selectedOptions,
-        freeText: freeText || undefined,
-      },
+      followUpResponses: mode === 'open'
+        ? (openAnswersOverride ?? openAnswers)
+        : {
+            question: currentQuestion?.question,
+            selectedOptions,
+            freeText: freeText || undefined,
+          },
       wantsCallback: false,
     };
 
@@ -353,6 +362,29 @@ function KioskInner() {
               </div>
             </div>
           )}
+
+          {step === 'open_wizard' && (() => {
+            const DEFAULT_WIZARD_INTRO: Record<string, string> = {
+              very_happy: 'Formidable ! 🎉 Votre satisfaction nous fait plaisir. Dites-nous ce qui a rendu votre visite exceptionnelle.',
+              happy: 'Merci pour votre confiance. Vos réponses nous aident à maintenir ce niveau de service.',
+              unhappy: "Nous regrettons que votre expérience n'ait pas été à la hauteur. Vos réponses nous aideront à progresser.",
+              very_unhappy: "Nous sommes sincèrement désolés. Votre témoignage est précieux — prenons le temps d'écouter pour corriger ce qui doit l'être.",
+            };
+            const customMessages = ((config as any)?.wizardIntroMessages ?? {}) as Record<string, string>;
+            const introMessage = selectedSentiment
+              ? (customMessages[selectedSentiment]?.trim() || DEFAULT_WIZARD_INTRO[selectedSentiment])
+              : undefined;
+            return (
+              <OpenQuestionsWizard
+                questions={((config as any)?.openQuestions ?? []) as OpenQuestion[]}
+                introMessage={introMessage}
+                onSubmit={(answers) => {
+                  setOpenAnswers(answers);
+                  handleSubmitFeedback(answers);
+                }}
+              />
+            );
+          })()}
 
           {step === 'contact' && (
             <div className="w-full max-w-md mx-auto text-center space-y-6">

@@ -17,6 +17,7 @@ class Branch extends Model
         'address',
         'region',
         'is_active',
+        'questionnaire_mode',
     ];
 
     protected function casts(): array
@@ -54,5 +55,18 @@ class Branch extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'user_branch_assignments');
+    }
+
+    public function openQuestions()
+    {
+        return $this->hasMany(OpenQuestion::class);
+    }
+
+    public function effectiveQuestionnaireMode(): string
+    {
+        if ($this->questionnaire_mode !== null) {
+            return $this->questionnaire_mode;
+        }
+        return $this->organization?->questionnaire_mode ?? 'quadrimoji';
     }
 }

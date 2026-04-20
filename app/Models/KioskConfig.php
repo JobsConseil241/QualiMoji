@@ -23,6 +23,7 @@ class KioskConfig extends Model
         'offline_mode_enabled',
         'screensaver_slides',
         'message_templates',
+        'wizard_intro_messages',
         'footer_text',
     ];
 
@@ -35,6 +36,7 @@ class KioskConfig extends Model
             'offline_mode_enabled' => 'boolean',
             'screensaver_slides' => 'array',
             'message_templates' => 'array',
+            'wizard_intro_messages' => 'array',
         ];
     }
 

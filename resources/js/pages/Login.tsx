@@ -157,12 +157,11 @@ export default function Login() {
                 <p className="text-xs text-muted-foreground text-center mb-3 font-medium uppercase tracking-wide">Comptes de démonstration</p>
                 <div className="space-y-1.5">
                   {[
-                    { label: 'Administrateur', desc: 'Accès complet', email: 'admin@bgfi.com' },
-                    { label: 'Directeur Qualité', desc: 'Dashboard, rapports, KPIs', email: 'sophie.nze@bgfi.com' },
-                    { label: 'Directeur de Zone', desc: 'Zone Libreville (4 agences)', email: 'marc.ndong@bgfi.com' },
-                    { label: "Directeur d'Agence", desc: 'BGFI Siège Central', email: 'jm.obiang@bgfi.com' },
-                    { label: "Directeur d'Agence", desc: 'Centauri Premium Libreville', email: 'c.moussavou@bgfi.com' },
-                    { label: 'Admin IT', desc: 'Gestion technique', email: 'p.ntoutoume@bgfi.com' },
+                    { label: 'Administrateur', desc: 'Accès complet', email: 'admin@qualimoji.com' },
+                    { label: 'Directeur Qualité', desc: 'Dashboard, rapports, KPIs', email: 'sophie.laurent@qualimoji.com' },
+                    { label: "Directeur d'Agence", desc: 'Marc Dubois', email: 'marc.dubois@qualimoji.com' },
+                    { label: "Directeur d'Agence", desc: 'Julie Moreau', email: 'julie.moreau@qualimoji.com' },
+                    { label: 'Admin IT', desc: 'Gestion technique', email: 'thomas.petit@qualimoji.com' },
                   ].map((account) => (
                     <button
                       key={account.email}

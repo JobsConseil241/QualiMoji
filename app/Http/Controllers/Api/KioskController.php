@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\KioskConfig;
+use App\Models\OpenQuestion;
 use App\Models\QuestionConfig;
 use App\Models\Feedback;
 use App\Models\Organization;
@@ -18,19 +19,12 @@ class KioskController extends Controller
         $branch = Branch::where('id', $branchId)->where('is_active', true)->firstOrFail();
         $org = $branch->organization;
 
-        // Get kiosk config (branch-specific or org-level fallback)
         $kioskConfig = KioskConfig::where('branch_id', $branchId)->first()
             ?? KioskConfig::where('organization_id', $org->id)->whereNull('branch_id')->first();
 
-        // Get question configs
-        $questionConfigs = QuestionConfig::where(function ($q) use ($branchId, $org) {
-            $q->where('branch_id', $branchId)
-              ->orWhere(function ($q2) use ($org) {
-                  $q2->where('organization_id', $org->id)->whereNull('branch_id');
-              });
-        })->where('is_active', true)->orderBy('sort_order')->get();
+        $mode = $branch->effectiveQuestionnaireMode();
 
-        return response()->json([
+        $response = [
             'branch' => [
                 'id' => $branch->id,
                 'name' => $branch->name,
@@ -46,8 +40,26 @@ class KioskController extends Controller
                 'kiosk_show_branch_name' => $org->kiosk_show_branch_name,
             ],
             'kiosk_config' => $kioskConfig,
-            'question_configs' => $questionConfigs,
-        ]);
+            'questionnaire_mode' => $mode,
+        ];
+
+        if ($mode === 'open') {
+            $response['open_questions'] = OpenQuestion::where(function ($q) use ($branchId, $org) {
+                $q->where('branch_id', $branchId)
+                  ->orWhere(function ($q2) use ($org) {
+                      $q2->where('organization_id', $org->id)->whereNull('branch_id');
+                  });
+            })->where('is_active', true)->orderBy('sort_order')->get();
+        } else {
+            $response['question_configs'] = QuestionConfig::where(function ($q) use ($branchId, $org) {
+                $q->where('branch_id', $branchId)
+                  ->orWhere(function ($q2) use ($org) {
+                      $q2->where('organization_id', $org->id)->whereNull('branch_id');
+                  });
+            })->where('is_active', true)->orderBy('sort_order')->get();
+        }
+
+        return response()->json($response);
     }
 
     public function updateContact(Request $request, Feedback $feedback)

@@ -13,13 +13,25 @@ class QuestionConfigSeeder extends Seeder
         $admin = User::where('email', 'admin@qualimoji.com')->first();
         $orgId = '00000000-0000-0000-0000-000000000001';
 
+        $toOptions = function (array $labels): array {
+            $out = [];
+            foreach ($labels as $i => $label) {
+                $out[] = [
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'label' => $label,
+                    'order' => $i,
+                ];
+            }
+            return $out;
+        };
+
         $configs = [
             [
                 'sentiment' => 'very_happy',
                 'emoji' => '😍',
                 'label' => 'Très satisfait',
                 'question' => 'Qu\'avez-vous le plus apprécié ?',
-                'options' => json_encode(['Accueil chaleureux', 'Rapidité du service', 'Compétence du personnel', 'Environnement agréable']),
+                'options' => $toOptions(['Accueil chaleureux', 'Rapidité du service', 'Compétence du personnel', 'Environnement agréable']),
                 'allow_free_text' => true,
                 'is_active' => true,
                 'sort_order' => 0,
@@ -29,7 +41,7 @@ class QuestionConfigSeeder extends Seeder
                 'emoji' => '😊',
                 'label' => 'Satisfait',
                 'question' => 'Qu\'est-ce qui vous a plu ?',
-                'options' => json_encode(['Accueil chaleureux', 'Rapidité du service', 'Compétence du personnel', 'Environnement agréable']),
+                'options' => $toOptions(['Accueil chaleureux', 'Rapidité du service', 'Compétence du personnel', 'Environnement agréable']),
                 'allow_free_text' => true,
                 'is_active' => true,
                 'sort_order' => 1,
@@ -39,7 +51,7 @@ class QuestionConfigSeeder extends Seeder
                 'emoji' => '😕',
                 'label' => 'Insatisfait',
                 'question' => 'Comment pourrions-nous améliorer votre expérience ?',
-                'options' => json_encode(['Réduire le temps d\'attente', 'Améliorer l\'accueil', 'Mieux informer', 'Moderniser les locaux']),
+                'options' => $toOptions(['Réduire le temps d\'attente', 'Améliorer l\'accueil', 'Mieux informer', 'Moderniser les locaux']),
                 'allow_free_text' => true,
                 'is_active' => true,
                 'sort_order' => 2,
@@ -49,7 +61,7 @@ class QuestionConfigSeeder extends Seeder
                 'emoji' => '😡',
                 'label' => 'Très insatisfait',
                 'question' => 'Quel a été le principal problème ?',
-                'options' => json_encode(['Temps d\'attente trop long', 'Personnel désagréable', 'Problème non résolu', 'Manque d\'information', 'Environnement dégradé']),
+                'options' => $toOptions(['Temps d\'attente trop long', 'Personnel désagréable', 'Problème non résolu', 'Manque d\'information', 'Environnement dégradé']),
                 'allow_free_text' => true,
                 'is_active' => true,
                 'sort_order' => 3,

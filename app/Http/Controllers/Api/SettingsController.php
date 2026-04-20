@@ -7,8 +7,10 @@ use App\Models\QuestionConfig;
 use App\Models\KioskConfig;
 use App\Models\KpiConfig;
 use App\Models\NotificationConfig;
+use App\Models\OpenQuestion;
 use App\Models\Organization;
 use App\Models\AuditLog;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -33,10 +35,16 @@ class SettingsController extends Controller
     public function getQuestionConfigs(Request $request)
     {
         $user = $request->user();
-        $configs = QuestionConfig::where('user_id', $user->id)
-            ->orWhere('organization_id', $user->organization_id)
-            ->orderBy('sort_order')
-            ->get();
+        $branchId = $request->get('branch_id');
+
+        $query = QuestionConfig::where('organization_id', $user->organization_id);
+        if ($branchId !== null) {
+            $query->where('branch_id', $branchId);
+        } else {
+            $query->whereNull('branch_id');
+        }
+
+        $configs = $query->orderBy('sort_order')->get();
 
         return response()->json(['question_configs' => $configs]);
     }
@@ -44,6 +52,7 @@ class SettingsController extends Controller
     public function saveQuestionConfigs(Request $request)
     {
         $validated = $request->validate([
+            'branch_id' => 'nullable|string|exists:branches,id',
             'configs' => 'required|array',
             'configs.*.sentiment' => 'required|string',
             'configs.*.emoji' => 'nullable|string',
@@ -53,10 +62,17 @@ class SettingsController extends Controller
             'configs.*.allow_free_text' => 'boolean',
             'configs.*.is_active' => 'boolean',
             'configs.*.sort_order' => 'nullable|integer',
-            'configs.*.branch_id' => 'nullable|string',
         ]);
 
         $user = $request->user();
+        $branchId = $validated['branch_id'] ?? null;
+
+        if ($branchId) {
+            $this->authorizeBranchMode($user, $branchId);
+        } elseif (!in_array($user->role, ['admin', 'it_admin', 'zone_director'], true)) {
+            abort(403);
+        }
+
         $saved = [];
         $sentiments = [];
 
@@ -65,12 +81,11 @@ class SettingsController extends Controller
 
             $saved[] = QuestionConfig::updateOrCreate(
                 [
-                    'user_id' => $user->id,
+                    'organization_id' => $user->organization_id,
+                    'branch_id' => $branchId,
                     'sentiment' => $config['sentiment'],
-                    'branch_id' => $config['branch_id'] ?? null,
                 ],
                 [
-                    'organization_id' => $user->organization_id,
                     'user_id' => $user->id,
                     'emoji' => $config['emoji'] ?? null,
                     'label' => $config['label'] ?? null,
@@ -83,8 +98,8 @@ class SettingsController extends Controller
             );
         }
 
-        // Remove configs that were deleted by the user
-        QuestionConfig::where('user_id', $user->id)
+        QuestionConfig::where('organization_id', $user->organization_id)
+            ->where(fn ($q) => $branchId ? $q->where('branch_id', $branchId) : $q->whereNull('branch_id'))
             ->whereNotIn('sentiment', $sentiments)
             ->delete();
 
@@ -93,10 +108,172 @@ class SettingsController extends Controller
             'actor_email' => $user->email,
             'action' => 'question_configs.updated',
             'target_type' => 'question_config',
-            'details' => ['count' => count($saved)],
+            'details' => ['count' => count($saved), 'branch_id' => $branchId],
         ]);
 
         return response()->json(['question_configs' => $saved]);
+    }
+
+    // ── Questionnaire Mode ──
+
+    public function getQuestionnaireMode(Request $request)
+    {
+        $user = $request->user();
+        $org = Organization::find($user->organization_id);
+
+        $branches = Branch::where('organization_id', $user->organization_id)
+            ->get(['id', 'name', 'questionnaire_mode'])
+            ->map(fn ($b) => [
+                'branch_id' => $b->id,
+                'name' => $b->name,
+                'mode' => $b->questionnaire_mode,
+            ]);
+
+        return response()->json([
+            'org_mode' => $org?->questionnaire_mode ?? 'quadrimoji',
+            'branches' => $branches,
+        ]);
+    }
+
+    public function updateQuestionnaireMode(Request $request)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'mode' => 'required|in:quadrimoji,open',
+            'branch_id' => 'nullable|string|exists:branches,id',
+            'wipe_other_mode_config' => 'nullable|boolean',
+        ]);
+
+        if (!empty($validated['branch_id'])) {
+            $this->authorizeBranchMode($user, $validated['branch_id']);
+            $branch = Branch::findOrFail($validated['branch_id']);
+            $branch->update(['questionnaire_mode' => $validated['mode']]);
+            $target = $branch;
+            $targetType = 'branch';
+        } else {
+            if (!in_array($user->role, ['admin', 'it_admin', 'zone_director'], true)) {
+                abort(403, 'Only admin or zone director can change org mode');
+            }
+            $org = Organization::findOrFail($user->organization_id);
+            $org->update(['questionnaire_mode' => $validated['mode']]);
+            $target = $org;
+            $targetType = 'organization';
+        }
+
+        AuditLog::create([
+            'actor_id' => $user->id,
+            'actor_email' => $user->email,
+            'action' => 'questionnaire_mode.updated',
+            'target_type' => $targetType,
+            'target_id' => $target->id,
+            'details' => ['mode' => $validated['mode']],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'mode' => $validated['mode'],
+            'scope' => $targetType,
+        ]);
+    }
+
+    // ── Open Questions ──
+
+    public function getOpenQuestions(Request $request)
+    {
+        $user = $request->user();
+        $branchId = $request->get('branch_id');
+
+        $query = OpenQuestion::where('organization_id', $user->organization_id);
+        if ($branchId !== null) {
+            $query->where('branch_id', $branchId);
+        } else {
+            $query->whereNull('branch_id');
+        }
+
+        $configs = $query->orderBy('sort_order')->get();
+
+        return response()->json(['open_questions' => $configs]);
+    }
+
+    public function saveOpenQuestions(Request $request)
+    {
+        $validated = $request->validate([
+            'branch_id' => 'nullable|string|exists:branches,id',
+            'configs' => 'required|array|max:10',
+            'configs.*.id' => 'nullable|string',
+            'configs.*.label' => 'required|string|max:300',
+            'configs.*.type' => 'required|in:short_text,long_text,rating_1_5,rating_1_10,single_choice,multi_choice',
+            'configs.*.options' => 'nullable|array',
+            'configs.*.options.*.id' => 'required_with:configs.*.options|string',
+            'configs.*.options.*.label' => 'required_with:configs.*.options|string|max:200',
+            'configs.*.options.*.is_other' => 'nullable|boolean',
+            'configs.*.is_required' => 'boolean',
+            'configs.*.is_active' => 'boolean',
+            'configs.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        $user = $request->user();
+        $branchId = $validated['branch_id'] ?? null;
+
+        if ($branchId) {
+            $this->authorizeBranchMode($user, $branchId);
+        } elseif (!in_array($user->role, ['admin', 'it_admin', 'zone_director'], true)) {
+            abort(403);
+        }
+
+        OpenQuestion::where('organization_id', $user->organization_id)
+            ->where(fn ($q) => $branchId ? $q->where('branch_id', $branchId) : $q->whereNull('branch_id'))
+            ->delete();
+
+        $saved = [];
+        foreach ($validated['configs'] as $cfg) {
+            $saved[] = OpenQuestion::create([
+                'organization_id' => $user->organization_id,
+                'branch_id' => $branchId,
+                'label' => $cfg['label'],
+                'type' => $cfg['type'],
+                'options' => $cfg['options'] ?? null,
+                'is_required' => $cfg['is_required'] ?? false,
+                'is_active' => $cfg['is_active'] ?? true,
+                'sort_order' => $cfg['sort_order'],
+            ]);
+        }
+
+        AuditLog::create([
+            'actor_id' => $user->id,
+            'actor_email' => $user->email,
+            'action' => 'open_questions.updated',
+            'target_type' => 'open_question',
+            'details' => ['count' => count($saved), 'branch_id' => $branchId],
+        ]);
+
+        return response()->json(['open_questions' => $saved]);
+    }
+
+    private function authorizeBranchMode($user, string $branchId): void
+    {
+        if (in_array($user->role, ['admin', 'it_admin'], true)) {
+            return;
+        }
+        $branch = Branch::findOrFail($branchId);
+        if ($branch->organization_id !== $user->organization_id) {
+            abort(403);
+        }
+        if ($user->role === 'zone_director') {
+            $userZoneId = $user->userRole?->zone_id;
+            if ($userZoneId === null || $branch->zone_id !== $userZoneId) {
+                abort(403);
+            }
+            return;
+        }
+        if ($user->role === 'branch_director') {
+            $assigned = $user->branches()->where('branches.id', $branchId)->exists();
+            if (!$assigned) {
+                abort(403);
+            }
+            return;
+        }
+        abort(403);
     }
 
     // ── Kiosk Config ──
@@ -128,6 +305,11 @@ class SettingsController extends Controller
             'offline_mode_enabled' => 'boolean',
             'screensaver_slides' => 'nullable|array',
             'message_templates' => 'nullable|array',
+            'wizard_intro_messages' => 'nullable|array',
+            'wizard_intro_messages.very_happy' => 'nullable|string|max:500',
+            'wizard_intro_messages.happy' => 'nullable|string|max:500',
+            'wizard_intro_messages.unhappy' => 'nullable|string|max:500',
+            'wizard_intro_messages.very_unhappy' => 'nullable|string|max:500',
             'footer_text' => 'nullable|string|max:255',
         ]);
 

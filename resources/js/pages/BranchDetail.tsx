@@ -42,13 +42,56 @@ function sentimentToScore(s: string): number {
   return map[s] || 2;
 }
 
-function getComment(f: any): string {
+function getComment(f: any, openQuestionsMap?: Record<string, any>): string {
   const resp = f.follow_up_responses;
   if (!resp) return '';
+  // Open mode: array of {question_id, type, answer, other_texts?}
+  if (Array.isArray(resp)) {
+    const parts = resp
+      .map((r: any) => {
+        const a = r?.answer;
+        if (a === null || a === undefined) return null;
+        const q = openQuestionsMap?.[r.question_id];
+        const opts: any[] = Array.isArray(q?.options) ? q.options : [];
+        const labelOf = (id: string) => opts.find((o: any) => o.id === id)?.label ?? id;
+        let display: string;
+        if (Array.isArray(a)) display = a.map(labelOf).join(', ');
+        else if (typeof a === 'string' && opts.length) display = labelOf(a);
+        else display = String(a);
+        const other = r?.other_texts && typeof r.other_texts === 'object'
+          ? Object.values(r.other_texts).filter((t) => typeof t === 'string' && (t as string).trim() !== '').join(' / ')
+          : '';
+        return other ? `${display} (autre : ${other})` : display;
+      })
+      .filter((v) => v !== null && v !== '');
+    return parts.join(' | ');
+  }
+  // Quadrimoji object shape
   if (resp.freeText) return resp.freeText;
   if (resp.comment) return resp.comment;
   if (resp.selectedOptions && Array.isArray(resp.selectedOptions)) return resp.selectedOptions.join(', ');
   return '';
+}
+
+function renderOpenAnswers(f: any, openQuestionsMap?: Record<string, any>): { label: string; value: string }[] {
+  const resp = f.follow_up_responses;
+  if (!Array.isArray(resp)) return [];
+  return resp.map((r: any) => {
+    const q = openQuestionsMap?.[r.question_id];
+    const label = q?.label ?? 'Question';
+    const opts: any[] = Array.isArray(q?.options) ? q.options : [];
+    const labelOf = (id: string) => opts.find((o: any) => o.id === id)?.label ?? id;
+    const a = r?.answer;
+    let value: string;
+    if (a === null || a === undefined) value = '—';
+    else if (Array.isArray(a)) value = a.map(labelOf).join(', ');
+    else if (typeof a === 'string' && opts.length) value = labelOf(a);
+    else value = String(a);
+    const other = r?.other_texts && typeof r.other_texts === 'object'
+      ? Object.values(r.other_texts).filter((t) => typeof t === 'string' && (t as string).trim() !== '').join(' / ')
+      : '';
+    return { label, value: other ? `${value} (autre : ${other})` : value };
+  });
 }
 
 export default function BranchDetail() {
@@ -239,7 +282,7 @@ export default function BranchDetail() {
               {filteredFeedbacks.map((f: any) => {
                 const sentCfg = sentimentConfig[f.sentiment] || sentimentConfig.unhappy;
                 const score = sentimentToScore(f.sentiment);
-                const comment = getComment(f);
+                const comment = getComment(f, data?.open_questions_map);
                 return (
                   <button
                     key={f.id}
@@ -289,7 +332,8 @@ export default function BranchDetail() {
           {selectedFeedback && (() => {
             const sentCfg = sentimentConfig[selectedFeedback.sentiment] || sentimentConfig.unhappy;
             const score = sentimentToScore(selectedFeedback.sentiment);
-            const comment = getComment(selectedFeedback);
+            const comment = getComment(selectedFeedback, data?.open_questions_map);
+            const openAnswers = renderOpenAnswers(selectedFeedback, data?.open_questions_map);
             return (
               <>
                 <DialogHeader>
@@ -310,7 +354,17 @@ export default function BranchDetail() {
                     <span className="text-sm font-medium">{score}/5</span>
                   </div>
 
-                  {comment && (
+                  {openAnswers.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-muted-foreground">Réponses détaillées</p>
+                      {openAnswers.map((qa, i) => (
+                        <div key={i} className="border-l-2 border-primary/30 pl-3">
+                          <p className="text-xs font-medium text-foreground">{qa.label}</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{qa.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : comment && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Commentaire / Réponses</p>
                       <p className="text-sm">{comment}</p>

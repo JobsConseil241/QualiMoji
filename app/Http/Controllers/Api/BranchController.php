@@ -196,6 +196,16 @@ class BranchController extends Controller
             ->limit(50)
             ->get();
 
+        // Labels for open-mode question IDs (branch-specific + org-level fallback)
+        $openQuestionsMap = \App\Models\OpenQuestion::where(function ($q) use ($branch) {
+                $q->where('branch_id', $branch->id)
+                  ->orWhere(function ($q2) use ($branch) {
+                      $q2->where('organization_id', $branch->organization_id)->whereNull('branch_id');
+                  });
+            })
+            ->get(['id', 'label', 'type', 'options'])
+            ->keyBy('id');
+
         // Active alerts
         $activeAlerts = Alert::where('branch_id', $branch->id)
             ->where('status', 'active')
@@ -225,6 +235,7 @@ class BranchController extends Controller
                 'rank' => $rank,
                 'total_branches' => count($orgBranchIds),
             ],
+            'open_questions_map' => $openQuestionsMap,
             'evolution' => $evolution,
             'issues' => $issues,
             'feedbacks' => $recentFeedbacks,

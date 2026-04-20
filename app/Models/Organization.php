@@ -17,6 +17,7 @@ class Organization extends Model
         'kiosk_logo_position',
         'kiosk_show_org_name',
         'kiosk_show_branch_name',
+        'questionnaire_mode',
     ];
 
     protected function casts(): array
@@ -45,6 +46,11 @@ class Organization extends Model
     public function questionConfigs()
     {
         return $this->hasMany(QuestionConfig::class);
+    }
+
+    public function openQuestions()
+    {
+        return $this->hasMany(OpenQuestion::class);
     }
 
     public function kioskConfigs()
