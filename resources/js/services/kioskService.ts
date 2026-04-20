@@ -20,8 +20,15 @@ export async function fetchKioskConfig(branchId: string) {
     const openQuestions = data.open_questions ?? [];
     const questionnaireMode = data.questionnaire_mode ?? 'quadrimoji';
 
+    const DEFAULT_SENTIMENTS: KioskQuestion[] = [
+        { sentiment: 'very_happy', emoji: '😊', label: 'Très satisfait', question: '', options: [], allowFreeText: false, isActive: true },
+        { sentiment: 'happy', emoji: '🙂', label: 'Satisfait', question: '', options: [], allowFreeText: false, isActive: true },
+        { sentiment: 'unhappy', emoji: '😕', label: 'Insatisfait', question: '', options: [], allowFreeText: false, isActive: true },
+        { sentiment: 'very_unhappy', emoji: '😞', label: 'Très insatisfait', question: '', options: [], allowFreeText: false, isActive: true },
+    ];
+
     // Transform question_configs to KioskQuestion[]
-    const questions: KioskQuestion[] = questionConfigs
+    const mapped: KioskQuestion[] = questionConfigs
         .filter((q: any) => q.is_active !== false)
         .map((q: any) => ({
             sentiment: q.sentiment,
@@ -38,6 +45,12 @@ export async function fetchKioskConfig(branchId: string) {
             allowFreeText: q.allow_free_text ?? true,
             isActive: q.is_active ?? true,
         }));
+
+    // In Open mode the backend returns no question_configs; fall back to the
+    // default 4 sentiments so the initial smiley selector still renders.
+    // In Quadrimoji mode with an empty config (fresh branch override), do the
+    // same so the kiosk is never blank.
+    const questions: KioskQuestion[] = mapped.length > 0 ? mapped : DEFAULT_SENTIMENTS;
 
     // Build unified config object expected by Kiosk component
     const config = {
