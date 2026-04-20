@@ -143,7 +143,10 @@ export default function OpenQuestionsWizard({ questions, onSubmit, introMessage,
         {q.is_required && <span className="text-destructive ml-1">*</span>}
       </h2>
 
-      <div className="flex-1 min-h-0 overflow-y-auto py-2">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto py-2"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+      >
         <Renderer />
       </div>
 

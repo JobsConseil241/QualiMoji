@@ -25,8 +25,9 @@ export default function MultiChoice({ options, value, onChange, otherTexts, onOt
       <div
         className={cn(
           'flex flex-wrap justify-center gap-2',
-          shouldScroll && 'max-h-[38vh] overflow-y-auto p-1',
+          shouldScroll && 'max-h-[38vh] overflow-y-auto p-1 rounded-lg border border-border/40',
         )}
+        style={shouldScroll ? { WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } : undefined}
       >
         {options.map((opt) => {
           const selected = value.includes(opt.id);
