@@ -64,17 +64,20 @@ export default function Reports() {
   useEffect(() => {
     (async () => {
       try {
-        const [branchList, stats, feedbacks, alerts, branding, zonesData] = await Promise.all([
+        const [branchList, stats, feedbacks, alerts, branding, zonesData, openQuestions] = await Promise.all([
           fetchBranches(),
           fetchDashboardStats('30d'),
           fetchFeedbacks({ per_page: 2000 }),
           fetchAlerts({ per_page: 500 }),
           api.get('/branding').then(r => r.data).catch(() => null),
           api.get('/zones').then(r => r.data).catch(() => []),
+          api.get('/settings/open-questions').then(r => r.data.open_questions ?? []).catch(() => []),
         ]);
         setBranches((branchList as any[]).map((b: any) => ({ id: b.id, name: b.name, zone_id: b.zone_id })));
         setZones(Array.isArray(zonesData) ? zonesData.map((z: any) => ({ id: z.id, name: z.name })) : []);
-        setReportData({ branches: branchList, stats, feedbacks, alerts, zones: zonesData });
+        const openQuestionsMap: Record<string, any> = {};
+        (openQuestions as any[]).forEach((q: any) => { if (q.id) openQuestionsMap[q.id] = q; });
+        setReportData({ branches: branchList, stats, feedbacks, alerts, zones: zonesData, openQuestionsMap });
         if (branding?.name) setOrgName(branding.name);
       } catch {}
     })();
