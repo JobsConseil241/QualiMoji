@@ -31,7 +31,11 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
     return () => clearInterval(timer);
   }, [activeSlides.length]);
 
-  const handleDismiss = useCallback(() => {
+  const handleDismiss = useCallback((e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     onDismiss();
   }, [onDismiss]);
 
@@ -49,8 +53,7 @@ export default function Screensaver({ slides, primaryColor, onDismiss }: Screens
   return (
     <div
       className="kiosk-screensaver"
-      onClick={handleDismiss}
-      onTouchStart={handleDismiss}
+      onPointerDown={handleDismiss}
       role="button"
       tabIndex={0}
       aria-label="Touchez pour commencer"
