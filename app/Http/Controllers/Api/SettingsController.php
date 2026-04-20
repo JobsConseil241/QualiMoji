@@ -35,10 +35,16 @@ class SettingsController extends Controller
     public function getQuestionConfigs(Request $request)
     {
         $user = $request->user();
-        $configs = QuestionConfig::where('user_id', $user->id)
-            ->orWhere('organization_id', $user->organization_id)
-            ->orderBy('sort_order')
-            ->get();
+        $branchId = $request->get('branch_id');
+
+        $query = QuestionConfig::where('organization_id', $user->organization_id);
+        if ($branchId !== null) {
+            $query->where('branch_id', $branchId);
+        } else {
+            $query->whereNull('branch_id');
+        }
+
+        $configs = $query->orderBy('sort_order')->get();
 
         return response()->json(['question_configs' => $configs]);
     }
@@ -46,6 +52,7 @@ class SettingsController extends Controller
     public function saveQuestionConfigs(Request $request)
     {
         $validated = $request->validate([
+            'branch_id' => 'nullable|string|exists:branches,id',
             'configs' => 'required|array',
             'configs.*.sentiment' => 'required|string',
             'configs.*.emoji' => 'nullable|string',
@@ -55,10 +62,17 @@ class SettingsController extends Controller
             'configs.*.allow_free_text' => 'boolean',
             'configs.*.is_active' => 'boolean',
             'configs.*.sort_order' => 'nullable|integer',
-            'configs.*.branch_id' => 'nullable|string',
         ]);
 
         $user = $request->user();
+        $branchId = $validated['branch_id'] ?? null;
+
+        if ($branchId) {
+            $this->authorizeBranchMode($user, $branchId);
+        } elseif (!in_array($user->role, ['admin', 'it_admin', 'zone_director'], true)) {
+            abort(403);
+        }
+
         $saved = [];
         $sentiments = [];
 
@@ -67,12 +81,11 @@ class SettingsController extends Controller
 
             $saved[] = QuestionConfig::updateOrCreate(
                 [
-                    'user_id' => $user->id,
+                    'organization_id' => $user->organization_id,
+                    'branch_id' => $branchId,
                     'sentiment' => $config['sentiment'],
-                    'branch_id' => $config['branch_id'] ?? null,
                 ],
                 [
-                    'organization_id' => $user->organization_id,
                     'user_id' => $user->id,
                     'emoji' => $config['emoji'] ?? null,
                     'label' => $config['label'] ?? null,
@@ -85,8 +98,8 @@ class SettingsController extends Controller
             );
         }
 
-        // Remove configs that were deleted by the user
-        QuestionConfig::where('user_id', $user->id)
+        QuestionConfig::where('organization_id', $user->organization_id)
+            ->where(fn ($q) => $branchId ? $q->where('branch_id', $branchId) : $q->whereNull('branch_id'))
             ->whereNotIn('sentiment', $sentiments)
             ->delete();
 
@@ -95,7 +108,7 @@ class SettingsController extends Controller
             'actor_email' => $user->email,
             'action' => 'question_configs.updated',
             'target_type' => 'question_config',
-            'details' => ['count' => count($saved)],
+            'details' => ['count' => count($saved), 'branch_id' => $branchId],
         ]);
 
         return response()->json(['question_configs' => $saved]);

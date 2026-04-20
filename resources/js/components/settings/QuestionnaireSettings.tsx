@@ -12,6 +12,7 @@ import api from '@/lib/api';
 import { QuestionsConfig, type QuestionConfig } from '@/components/settings/QuestionsConfig';
 import { OpenQuestionsEditor } from '@/components/settings/OpenQuestionsEditor';
 import { BranchOverridePanel } from '@/components/settings/BranchOverridePanel';
+import BranchContentEditor from '@/components/settings/BranchContentEditor';
 import type {
   QuestionnaireMode, OpenQuestion, BranchModeEntry,
 } from '@/types/questionnaire';
@@ -24,6 +25,7 @@ export default function QuestionnaireSettings() {
   const [openQuestions, setOpenQuestions] = useState<OpenQuestion[]>([]);
   const [saving, setSaving] = useState(false);
   const [pendingModeChange, setPendingModeChange] = useState<QuestionnaireMode | null>(null);
+  const [editingBranch, setEditingBranch] = useState<{ branch: BranchModeEntry; mode: QuestionnaireMode } | null>(null);
 
   const load = useCallback(async () => {
     const [modeRes, quadRes, openRes] = await Promise.all([
@@ -133,9 +135,21 @@ export default function QuestionnaireSettings() {
               await load();
               toast({ title: 'Héritage restauré' });
             }}
+            onEditContent={(branch, effectiveMode) => setEditingBranch({ branch, mode: effectiveMode })}
           />
         </TabsContent>
       </Tabs>
+
+      {editingBranch && (
+        <BranchContentEditor
+          branchId={editingBranch.branch.branch_id}
+          branchName={editingBranch.branch.name}
+          effectiveMode={editingBranch.mode}
+          open={editingBranch !== null}
+          onClose={() => setEditingBranch(null)}
+          onSaved={() => load()}
+        />
+      )}
 
       <AlertDialog open={pendingModeChange !== null} onOpenChange={(o) => !o && setPendingModeChange(null)}>
         <AlertDialogContent>

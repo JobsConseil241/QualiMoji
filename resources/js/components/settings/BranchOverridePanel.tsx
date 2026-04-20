@@ -8,9 +8,10 @@ interface Props {
   branches: BranchModeEntry[];
   onOverride: (branchId: string, mode: QuestionnaireMode) => void;
   onRestoreInherit: (branchId: string) => void;
+  onEditContent?: (branch: BranchModeEntry, effectiveMode: QuestionnaireMode) => void;
 }
 
-export function BranchOverridePanel({ orgMode, branches, onOverride, onRestoreInherit }: Props) {
+export function BranchOverridePanel({ orgMode, branches, onOverride, onRestoreInherit, onEditContent }: Props) {
   return (
     <Table>
       <TableHeader>
@@ -34,6 +35,11 @@ export function BranchOverridePanel({ orgMode, branches, onOverride, onRestoreIn
                 </Badge>
               </TableCell>
               <TableCell className="text-right space-x-2">
+                {onEditContent && (
+                  <Button size="sm" variant="secondary" onClick={() => onEditContent(b, effective)}>
+                    Éditer questions
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
