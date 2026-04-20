@@ -17,6 +17,8 @@ export async function fetchKioskConfig(branchId: string) {
     const org = data.organization ?? {};
     const branch = data.branch ?? {};
     const questionConfigs = data.question_configs ?? [];
+    const openQuestions = data.open_questions ?? [];
+    const questionnaireMode = data.questionnaire_mode ?? 'quadrimoji';
 
     // Transform question_configs to KioskQuestion[]
     const questions: KioskQuestion[] = questionConfigs
@@ -67,6 +69,8 @@ export async function fetchKioskConfig(branchId: string) {
             showOrgName: org.kiosk_show_org_name ?? true,
             showBranchName: org.kiosk_show_branch_name ?? true,
         },
+        questionnaireMode,
+        openQuestions,
     };
 
     return {
