@@ -127,6 +127,7 @@ function KioskInner() {
   // Submit feedback (saves to DB, then shows contact form)
   const handleSubmitFeedback = async (openAnswersOverride?: OpenAnswer[]) => {
     if (!branchId || !selectedSentiment) return;
+    if (submitting) return;
     setSubmitting(true);
 
     const mode = (config as any)?.questionnaireMode ?? 'quadrimoji';
@@ -165,6 +166,8 @@ function KioskInner() {
 
   // Submit contact info (optional, updates existing feedback via API)
   const handleSubmitContact = async () => {
+    if (submitting) return;
+    setSubmitting(true);
     const fullPhone = contactPhone
       ? (() => {
           // Nettoyer : enlever espaces, tirets, points
@@ -202,6 +205,7 @@ function KioskInner() {
 
     // WhatsApp notification is now handled server-side automatically
 
+    setSubmitting(false);
     goToStep('thankyou');
   };
 
@@ -387,6 +391,7 @@ function KioskInner() {
               <OpenQuestionsWizard
                 questions={((config as any)?.openQuestions ?? []) as OpenQuestion[]}
                 introMessage={introMessage}
+                isSubmitting={submitting}
                 onSubmit={(answers) => {
                   setOpenAnswers(answers);
                   handleSubmitFeedback(answers);
@@ -448,10 +453,23 @@ function KioskInner() {
               </div>
 
               <div className="flex flex-col items-center gap-3 pt-2">
-                <Button size="lg" onClick={() => { haptic(); handleSubmitContact(); }} disabled={!contactPhone.trim()} className="px-8 gap-2">
-                  <Phone className="h-5 w-5" /> Envoyer mes coordonnées
+                <Button
+                  size="lg"
+                  onClick={() => { haptic(); handleSubmitContact(); }}
+                  disabled={submitting || !contactPhone.trim()}
+                  className="px-8 gap-2"
+                >
+                  {submitting ? (
+                    <><Loader2 className="h-5 w-5 animate-spin" /> Envoi…</>
+                  ) : (
+                    <><Phone className="h-5 w-5" /> Envoyer mes coordonnées</>
+                  )}
                 </Button>
-                <button onClick={() => { haptic(); goToStep('thankyou'); }} className="text-sm text-muted-foreground underline hover:text-foreground">
+                <button
+                  onClick={() => { haptic(); goToStep('thankyou'); }}
+                  disabled={submitting}
+                  className="text-sm text-muted-foreground underline hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Non merci, terminer
                 </button>
               </div>
