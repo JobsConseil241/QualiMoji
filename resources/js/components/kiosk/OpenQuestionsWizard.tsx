@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ShortText from '@/components/kiosk/question-types/ShortText';
@@ -13,6 +14,7 @@ interface Props {
   questions: OpenQuestion[];
   onSubmit: (answers: OpenAnswer[]) => void;
   introMessage?: string;
+  isSubmitting?: boolean;
 }
 
 function isEmpty(type: OpenQuestion['type'], value: unknown): boolean {
@@ -41,7 +43,7 @@ function missingOtherText(q: OpenQuestion, value: unknown, otherTexts: Record<st
   return false;
 }
 
-export default function OpenQuestionsWizard({ questions, onSubmit, introMessage }: Props) {
+export default function OpenQuestionsWizard({ questions, onSubmit, introMessage, isSubmitting }: Props) {
   const active = useMemo(
     () => questions.filter((q) => q.is_active).sort((a, b) => a.sort_order - b.sort_order),
     [questions],
@@ -71,6 +73,7 @@ export default function OpenQuestionsWizard({ questions, onSubmit, introMessage 
   };
 
   const next = () => {
+    if (isSubmitting) return;
     if (idx < active.length - 1) setIdx(idx + 1);
     else finish();
   };
@@ -140,7 +143,10 @@ export default function OpenQuestionsWizard({ questions, onSubmit, introMessage 
         {q.is_required && <span className="text-destructive ml-1">*</span>}
       </h2>
 
-      <div className="flex-1 min-h-0 overflow-y-auto py-2">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto py-2"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+      >
         <Renderer />
       </div>
 
@@ -152,11 +158,20 @@ export default function OpenQuestionsWizard({ questions, onSubmit, introMessage 
       )}
 
       <div className="flex justify-between items-center gap-4 pt-2">
-        <Button variant="ghost" size="lg" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}>
+        <Button
+          variant="ghost"
+          size="lg"
+          onClick={() => setIdx(Math.max(0, idx - 1))}
+          disabled={idx === 0 || isSubmitting}
+        >
           Précédent
         </Button>
-        <Button size="lg" onClick={next} disabled={!canNext} className="min-w-32">
-          {isLast ? 'Envoyer' : 'Suivant'}
+        <Button size="lg" onClick={next} disabled={!canNext || isSubmitting} className="min-w-32">
+          {isSubmitting && isLast ? (
+            <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Envoi…</>
+          ) : (
+            isLast ? 'Envoyer' : 'Suivant'
+          )}
         </Button>
       </div>
     </div>
