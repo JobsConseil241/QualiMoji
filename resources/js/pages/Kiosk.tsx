@@ -119,7 +119,7 @@ function KioskInner() {
   const [savedFeedbackId, setSavedFeedbackId] = useState<string | null>(null);
 
   // Submit feedback (saves to DB, then shows contact form)
-  const handleSubmitFeedback = async () => {
+  const handleSubmitFeedback = async (openAnswersOverride?: OpenAnswer[]) => {
     if (!branchId || !selectedSentiment) return;
     setSubmitting(true);
 
@@ -128,7 +128,7 @@ function KioskInner() {
       branchId,
       sentiment: selectedSentiment,
       followUpResponses: mode === 'open'
-        ? openAnswers
+        ? (openAnswersOverride ?? openAnswers)
         : {
             question: currentQuestion?.question,
             selectedOptions,
@@ -368,7 +368,7 @@ function KioskInner() {
               questions={((config as any)?.openQuestions ?? []) as OpenQuestion[]}
               onSubmit={(answers) => {
                 setOpenAnswers(answers);
-                handleSubmitFeedback();
+                handleSubmitFeedback(answers);
               }}
             />
           )}

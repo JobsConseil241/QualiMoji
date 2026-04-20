@@ -118,29 +118,24 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
     }
   };
 
+  const isLast = idx === active.length - 1;
+
   return (
-    <div className="max-w-xl mx-auto space-y-6 p-6">
+    <div className="w-full max-w-2xl mx-auto space-y-4 p-4 flex flex-col">
       <div className="flex justify-center gap-1.5">
         {active.map((_, i) => (
-          <span key={i} className={cn('h-2 w-2 rounded-full', i <= idx ? 'bg-primary' : 'bg-muted')} />
+          <span key={i} className={cn('h-1.5 w-1.5 rounded-full', i <= idx ? 'bg-primary' : 'bg-muted')} />
         ))}
       </div>
-      <p className="text-center text-xs text-muted-foreground">Question {idx + 1} sur {active.length}</p>
+      <p className="text-center text-[11px] text-muted-foreground">Question {idx + 1} sur {active.length}</p>
 
-      <h2 className="text-xl font-semibold text-center">
+      <h2 className="text-lg md:text-xl font-semibold text-center px-4">
         {q.label}
         {q.is_required && <span className="text-destructive ml-1">*</span>}
       </h2>
 
-      <Renderer />
-
-      <div className="flex justify-between pt-4">
-        <Button variant="ghost" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}>
-          Précédent
-        </Button>
-        <Button onClick={next} disabled={!canNext}>
-          {idx < active.length - 1 ? 'Suivant' : 'Terminer'}
-        </Button>
+      <div className="min-h-0 flex-1">
+        <Renderer />
       </div>
 
       {q.is_required && isEmpty(q.type, value) && (
@@ -149,6 +144,15 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
       {hasEmptyOther && (
         <p className="text-center text-xs text-destructive">Merci de préciser votre réponse dans le champ « Autre »</p>
       )}
+
+      <div className="flex justify-between items-center gap-4 pt-2">
+        <Button variant="ghost" size="lg" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}>
+          Précédent
+        </Button>
+        <Button size="lg" onClick={next} disabled={!canNext} className="min-w-32">
+          {isLast ? 'Envoyer' : 'Suivant'}
+        </Button>
+      </div>
     </div>
   );
 }

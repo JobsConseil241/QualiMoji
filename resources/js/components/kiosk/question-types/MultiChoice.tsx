@@ -28,7 +28,7 @@ export default function MultiChoice({ options, value, onChange, otherTexts, onOt
               key={opt.id}
               variant={selected ? 'default' : 'outline'}
               className={cn(
-                'rounded-full px-6 py-5 h-auto text-base whitespace-normal',
+                'rounded-full px-5 py-2.5 h-auto text-sm md:text-base whitespace-normal',
                 selected && 'ring-2 ring-primary',
               )}
               onClick={() => toggle(opt.id)}
