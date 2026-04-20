@@ -15,7 +15,15 @@
       "Bash(grep -r \"hasRole\\\\|UserRole\\\\|role.*==\\\\|role.*!=\\\\|role.*in\" /Users/primeclet/JOBS/QualiMoji-laravel/app/Http/Controllers --include=*.php -l)",
       "Bash(find /Users/primeclet/JOBS/QualiMoji-laravel/app/Models -type f -name *.php)",
       "Bash(grep -r \"Zone\\\\|zone\" /Users/primeclet/JOBS/QualiMoji-laravel/app/Models --include=*.php)",
-      "Bash(grep -r customer_notified /Users/primeclet/JOBS/QualiMoji-laravel/resources/js --include=*.tsx --include=*.ts)"
+      "Bash(grep -r customer_notified /Users/primeclet/JOBS/QualiMoji-laravel/resources/js --include=*.tsx --include=*.ts)",
+      "Bash(./vendor/bin/phpunit)",
+      "Bash(tee /tmp/phpunit_output.txt)",
+      "Bash(tee /tmp/tsc_head.txt)",
+      "Bash(git stash *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(node *)"
     ]
   }
 }

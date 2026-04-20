@@ -6,14 +6,21 @@ import { fr } from 'date-fns/locale';
 
 function extractComment(followUpResponses: any): string {
   if (!followUpResponses) return '';
-  // Open mode: array of {question_id, type, answer}
+  // Open mode: array of {question_id, type, answer, other_texts?}
   if (Array.isArray(followUpResponses)) {
     return followUpResponses
       .map((r: any) => {
         const a = r?.answer;
-        if (a === null || a === undefined) return null;
-        if (Array.isArray(a)) return a.join(', ');
-        return String(a);
+        let base: string | null = null;
+        if (a === null || a === undefined) base = null;
+        else if (Array.isArray(a)) base = a.join(', ');
+        else base = String(a);
+        const other = r?.other_texts && typeof r.other_texts === 'object'
+          ? Object.values(r.other_texts).filter((t) => typeof t === 'string' && t.trim() !== '').join(' / ')
+          : '';
+        if (!base && !other) return null;
+        if (other) return base ? `${base} (autre : ${other})` : `autre : ${other}`;
+        return base;
       })
       .filter((v: string | null) => v !== null && v !== '')
       .join(' | ');

@@ -206,6 +206,7 @@ class SettingsController extends Controller
             'configs.*.options' => 'nullable|array',
             'configs.*.options.*.id' => 'required_with:configs.*.options|string',
             'configs.*.options.*.label' => 'required_with:configs.*.options|string|max:200',
+            'configs.*.options.*.is_other' => 'nullable|boolean',
             'configs.*.is_required' => 'boolean',
             'configs.*.is_active' => 'boolean',
             'configs.*.sort_order' => 'required|integer|min:0',

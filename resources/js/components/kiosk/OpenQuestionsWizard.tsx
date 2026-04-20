@@ -23,6 +23,23 @@ function isEmpty(type: OpenQuestion['type'], value: unknown): boolean {
   return false;
 }
 
+// Returns true if the user picked an "Autre" option but left the precision text empty.
+function missingOtherText(q: OpenQuestion, value: unknown, otherTexts: Record<string, string> | undefined): boolean {
+  if (!q.options?.length) return false;
+  const selectedIds = q.type === 'multi_choice' && Array.isArray(value)
+    ? value
+    : q.type === 'single_choice' && typeof value === 'string' && value
+    ? [value]
+    : [];
+  for (const id of selectedIds) {
+    const opt = q.options.find((o) => o.id === id);
+    if (opt?.is_other && !(otherTexts?.[id] ?? '').trim()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
   const active = useMemo(
     () => questions.filter((q) => q.is_active).sort((a, b) => a.sort_order - b.sort_order),
@@ -30,6 +47,7 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
   );
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [otherTexts, setOtherTexts] = useState<Record<string, Record<string, string>>>({});
 
   if (active.length === 0) {
     return null;
@@ -38,9 +56,18 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
   const q = active[idx];
   const key = q.id ?? `idx-${idx}`;
   const value = answers[key];
-  const canNext = !q.is_required || !isEmpty(q.type, value);
+  const questionOtherTexts = otherTexts[key];
+
+  const hasEmptyOther = missingOtherText(q, value, questionOtherTexts);
+  const canNext = (!q.is_required || !isEmpty(q.type, value)) && !hasEmptyOther;
 
   const update = (v: any) => setAnswers((prev) => ({ ...prev, [key]: v }));
+  const updateOtherText = (optId: string, text: string) => {
+    setOtherTexts((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] ?? {}), [optId]: text },
+    }));
+  };
 
   const next = () => {
     if (idx < active.length - 1) setIdx(idx + 1);
@@ -51,11 +78,31 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
     const payload: OpenAnswer[] = active.map((qq, i) => {
       const k = qq.id ?? `idx-${i}`;
       const v = answers[k];
-      return {
+      const texts = otherTexts[k];
+      const answer: OpenAnswer = {
         question_id: qq.id ?? '',
         type: qq.type,
         answer: v === undefined ? null : v,
       };
+      // Only attach other_texts for the options that are both selected AND is_other
+      if (texts && qq.options?.length) {
+        const selectedIds = qq.type === 'multi_choice' && Array.isArray(v)
+          ? v
+          : qq.type === 'single_choice' && typeof v === 'string' && v
+          ? [v]
+          : [];
+        const filtered: Record<string, string> = {};
+        for (const id of selectedIds) {
+          const opt = qq.options.find((o) => o.id === id);
+          if (opt?.is_other && texts[id]) {
+            filtered[id] = texts[id];
+          }
+        }
+        if (Object.keys(filtered).length > 0) {
+          answer.other_texts = filtered;
+        }
+      }
+      return answer;
     });
     onSubmit(payload);
   };
@@ -66,8 +113,8 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
       case 'long_text':    return <LongText value={value ?? ''} onChange={update} />;
       case 'rating_1_5':   return <Rating1to5 value={value ?? null} onChange={update} />;
       case 'rating_1_10':  return <Rating1to10 value={value ?? null} onChange={update} />;
-      case 'single_choice': return <SingleChoice options={q.options ?? []} value={value ?? null} onChange={update} />;
-      case 'multi_choice':  return <MultiChoice options={q.options ?? []} value={value ?? []} onChange={update} />;
+      case 'single_choice': return <SingleChoice options={q.options ?? []} value={value ?? null} onChange={update} otherTexts={questionOtherTexts} onOtherTextChange={updateOtherText} />;
+      case 'multi_choice':  return <MultiChoice options={q.options ?? []} value={value ?? []} onChange={update} otherTexts={questionOtherTexts} onOtherTextChange={updateOtherText} />;
     }
   };
 
@@ -96,8 +143,11 @@ export default function OpenQuestionsWizard({ questions, onSubmit }: Props) {
         </Button>
       </div>
 
-      {q.is_required && !canNext && (
+      {q.is_required && isEmpty(q.type, value) && (
         <p className="text-center text-xs text-destructive">* Cette question est obligatoire</p>
+      )}
+      {hasEmptyOther && (
+        <p className="text-center text-xs text-destructive">Merci de préciser votre réponse dans le champ « Autre »</p>
       )}
     </div>
   );

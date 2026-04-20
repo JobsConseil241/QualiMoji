@@ -11,6 +11,7 @@ export type OpenQuestionType =
 export interface OpenQuestionOption {
   id: string;
   label: string;
+  is_other?: boolean;
 }
 
 export interface OpenQuestion {
@@ -33,4 +34,5 @@ export interface OpenAnswer {
   question_id: string;
   type: OpenQuestionType;
   answer: string | number | string[] | null;
+  other_texts?: Record<string, string>;
 }

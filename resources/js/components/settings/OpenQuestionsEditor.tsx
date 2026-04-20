@@ -49,6 +49,12 @@ function SortableRow({
     onChange({ ...question, options });
   };
 
+  const toggleOptionIsOther = (optIdx: number, isOther: boolean) => {
+    const options = [...(question.options ?? [])];
+    options[optIdx] = { ...options[optIdx], is_other: isOther };
+    onChange({ ...question, options });
+  };
+
   const addOption = () => {
     const options = [...(question.options ?? []), { id: crypto.randomUUID(), label: '' }];
     onChange({ ...question, options });
@@ -102,6 +108,16 @@ function SortableRow({
                   className="h-8 text-sm"
                   maxLength={200}
                 />
+                <label
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground whitespace-nowrap"
+                  title="Quand cette option est sélectionnée, un champ texte apparaît pour que l'utilisateur précise"
+                >
+                  <Switch
+                    checked={opt.is_other === true}
+                    onCheckedChange={(v) => toggleOptionIsOther(optIdx, v)}
+                  />
+                  Autre
+                </label>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeOption(optIdx)}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
