@@ -18,7 +18,7 @@ export default function Rating1to5({ value, onChange }: Props) {
           >
             {n}
           </Button>
-          <span className="text-[10px] text-muted-foreground text-center leading-tight max-w-[60px]">
+          <span className="text-[10px] text-muted-foreground text-center leading-tight whitespace-nowrap">
             {LABELS[i]}
           </span>
         </div>
