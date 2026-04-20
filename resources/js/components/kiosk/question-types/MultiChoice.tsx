@@ -1,5 +1,10 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Check } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { OpenQuestionOption } from '@/types/questionnaire';
 
@@ -11,17 +16,54 @@ interface Props {
   onOtherTextChange?: (optionId: string, text: string) => void;
 }
 
+const MAX_SELECTIONS = 3;
+
 export default function MultiChoice({ options, value, onChange, otherTexts, onOtherTextChange }: Props) {
-  const toggle = (id: string) => {
-    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+  const [otherModalFor, setOtherModalFor] = useState<OpenQuestionOption | null>(null);
+  const [otherDraft, setOtherDraft] = useState('');
+
+  const toggle = (opt: OpenQuestionOption) => {
+    const isSelected = value.includes(opt.id);
+
+    if (isSelected) {
+      onChange(value.filter((v) => v !== opt.id));
+      if (opt.is_other) onOtherTextChange?.(opt.id, '');
+      return;
+    }
+
+    if (value.length >= MAX_SELECTIONS) return;
+
+    if (opt.is_other) {
+      setOtherDraft(otherTexts?.[opt.id] ?? '');
+      setOtherModalFor(opt);
+      return;
+    }
+
+    onChange([...value, opt.id]);
   };
 
-  const selectedOthers = options.filter((o) => o.is_other === true && value.includes(o.id));
+  const confirmOther = () => {
+    if (!otherModalFor) return;
+    const trimmed = otherDraft.trim();
+    if (!trimmed) return;
+    onOtherTextChange?.(otherModalFor.id, trimmed);
+    if (!value.includes(otherModalFor.id)) {
+      onChange([...value, otherModalFor.id]);
+    }
+    setOtherModalFor(null);
+    setOtherDraft('');
+  };
+
+  const cancelOther = () => {
+    setOtherModalFor(null);
+    setOtherDraft('');
+  };
 
   const shouldScroll = options.length > 3;
+  const atMax = value.length >= MAX_SELECTIONS;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div
         className={cn(
           'flex flex-wrap justify-center gap-2',
@@ -32,32 +74,57 @@ export default function MultiChoice({ options, value, onChange, otherTexts, onOt
       >
         {options.map((opt) => {
           const selected = value.includes(opt.id);
+          const disabled = !selected && atMax;
+          const otherText = opt.is_other && selected ? otherTexts?.[opt.id] : undefined;
           return (
             <Button
               key={opt.id}
               variant={selected ? 'default' : 'outline'}
+              disabled={disabled}
               className={cn(
                 'rounded-full px-5 py-2.5 h-auto text-sm md:text-base whitespace-normal',
                 selected && 'ring-2 ring-primary',
+                disabled && 'opacity-40',
               )}
-              onClick={() => toggle(opt.id)}
+              onClick={() => toggle(opt)}
             >
-              {opt.label || 'Autre'}
+              <span>{opt.label || 'Autres à préciser'}</span>
+              {otherText && <span className="ml-1 text-xs opacity-80">: {otherText}</span>}
+              {selected && <Check className="h-4 w-4 ml-2" />}
             </Button>
           );
         })}
       </div>
 
-      {selectedOthers.map((opt) => (
-        <Input
-          key={opt.id}
-          value={otherTexts?.[opt.id] ?? ''}
-          onChange={(e) => onOtherTextChange?.(opt.id, e.target.value)}
-          placeholder={`Précisez pour « ${opt.label || 'Autre'} »…`}
-          maxLength={200}
-          className="max-w-md mx-auto"
-        />
-      ))}
+      <p className="text-center text-xs text-muted-foreground">
+        {value.length} / {MAX_SELECTIONS} choix {atMax && '· maximum atteint'}
+      </p>
+
+      <Dialog open={otherModalFor !== null} onOpenChange={(open) => { if (!open) cancelOther(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Précisez votre réponse</DialogTitle>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={otherDraft}
+            onChange={(e) => setOtherDraft(e.target.value)}
+            placeholder="Votre précision…"
+            maxLength={200}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && otherDraft.trim()) {
+                e.preventDefault();
+                confirmOther();
+              }
+            }}
+            className="text-base"
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={cancelOther}>Annuler</Button>
+            <Button onClick={confirmOther} disabled={!otherDraft.trim()}>Valider</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
