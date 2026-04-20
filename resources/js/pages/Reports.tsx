@@ -14,6 +14,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -47,6 +48,7 @@ export default function Reports() {
   const [customEnd, setCustomEnd] = useState<Date>(new Date());
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [selectedSentiments, setSelectedSentiments] = useState<string[]>(['very_happy', 'happy', 'unhappy', 'very_unhappy']);
+  const [modeFilter, setModeFilter] = useState<'all' | 'quadrimoji' | 'open'>('all');
   const [includeGlobalMetrics, setIncludeGlobalMetrics] = useState(true);
   const [includeBranchDetail, setIncludeBranchDetail] = useState(true);
   const [includeFeedbacks, setIncludeFeedbacks] = useState(true);
@@ -125,12 +127,13 @@ export default function Reports() {
     end: Date,
     fmt: 'excel' | 'pdf',
     options?: any,
+    sourceDataOverride?: any,
   ) => {
     setGenerating(key);
     // Simulate slight delay for UX
     await new Promise((r) => setTimeout(r, 600));
     try {
-      const data = buildReportData(title, type, start, end, reportData ?? {}, options);
+      const data = buildReportData(title, type, start, end, sourceDataOverride ?? reportData ?? {}, options);
       if (fmt === 'excel') {
         exportToExcel(data, title.replace(/\s+/g, '_'), orgName);
       } else {
@@ -438,6 +441,21 @@ export default function Reports() {
 
               <Separator />
 
+              {/* Mode questionnaire */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs">Mode questionnaire</Label>
+                <Select value={modeFilter} onValueChange={(v) => setModeFilter(v as 'all' | 'quadrimoji' | 'open')}>
+                  <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les modes</SelectItem>
+                    <SelectItem value="quadrimoji">Quadrimoji</SelectItem>
+                    <SelectItem value="open">Questions ouvertes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
               {/* Data to include */}
               <div className="space-y-2">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
@@ -470,6 +488,9 @@ export default function Reports() {
                   variant="outline" className="flex-1 gap-2"
                   disabled={!!generating}
                   onClick={() => {
+                    const filteredFeedbacks = modeFilter === 'all'
+                      ? reportData?.feedbacks
+                      : (reportData?.feedbacks ?? []).filter((f: any) => f.questionnaire_mode === modeFilter);
                     generate('custom-xl', `Rapport Personnalisé — ${format(customStart, 'dd MMM', { locale: fr })} au ${format(customEnd, 'dd MMM yyyy', { locale: fr })}`, 'custom', customStart, customEnd, 'excel', {
                       includeBranches: includeBranchDetail,
                       includeFeedbacks,
@@ -477,7 +498,7 @@ export default function Reports() {
                       includeCharts,
                       branchIds: selectedBranches.length ? selectedBranches : undefined,
                       sentiments: selectedSentiments,
-                    });
+                    }, { ...reportData, feedbacks: filteredFeedbacks });
                   }}
                 >
                   {generating === 'custom-xl' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
@@ -487,6 +508,9 @@ export default function Reports() {
                   className="flex-1 gap-2"
                   disabled={!!generating}
                   onClick={() => {
+                    const filteredFeedbacks = modeFilter === 'all'
+                      ? reportData?.feedbacks
+                      : (reportData?.feedbacks ?? []).filter((f: any) => f.questionnaire_mode === modeFilter);
                     generate('custom-pdf', `Rapport Personnalisé — ${format(customStart, 'dd MMM', { locale: fr })} au ${format(customEnd, 'dd MMM yyyy', { locale: fr })}`, 'custom', customStart, customEnd, 'pdf', {
                       includeBranches: includeBranchDetail,
                       includeFeedbacks,
@@ -494,7 +518,7 @@ export default function Reports() {
                       includeCharts,
                       branchIds: selectedBranches.length ? selectedBranches : undefined,
                       sentiments: selectedSentiments,
-                    });
+                    }, { ...reportData, feedbacks: filteredFeedbacks });
                   }}
                 >
                   {generating === 'custom-pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}

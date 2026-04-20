@@ -4,6 +4,27 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+function extractComment(followUpResponses: any): string {
+  if (!followUpResponses) return '';
+  // Open mode: array of {question_id, type, answer}
+  if (Array.isArray(followUpResponses)) {
+    return followUpResponses
+      .map((r: any) => {
+        const a = r?.answer;
+        if (a === null || a === undefined) return null;
+        if (Array.isArray(a)) return a.join(', ');
+        return String(a);
+      })
+      .filter((v: string | null) => v !== null && v !== '')
+      .join(' | ');
+  }
+  // Quadrimoji object shape
+  return followUpResponses.freeText
+    || followUpResponses.comment
+    || followUpResponses.selectedOptions?.join(', ')
+    || '';
+}
+
 export interface ReportData {
   title: string;
   type: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -407,7 +428,7 @@ export function buildReportData(
             branch: branch?.name ?? '',
             score: sentimentScores[f.sentiment] || 3,
             sentiment: sentimentLabels[f.sentiment] || f.sentiment,
-            comment: f.follow_up_responses?.freeText || f.follow_up_responses?.comment || f.follow_up_responses?.selectedOptions?.join(', ') || '',
+            comment: extractComment(f.follow_up_responses),
             category: f.sentiment,
           };
         })
