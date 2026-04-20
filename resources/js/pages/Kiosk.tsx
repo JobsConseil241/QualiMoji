@@ -100,8 +100,14 @@ function KioskInner() {
     setStep(newStep);
   }, [step]);
 
+  // Click-through guard: ignore sentiment clicks for a short window after screensaver dismissal
+  const screensaverDismissedAtRef = useRef(0);
+
   // Handle sentiment selection
   const handleSentiment = (sentiment: string) => {
+    if (Date.now() - screensaverDismissedAtRef.current < 300) {
+      return;
+    }
     setSelectedSentiment(sentiment);
     setSelectedOptions([]);
     setFreeText('');
@@ -249,7 +255,10 @@ function KioskInner() {
         <Screensaver
           slides={config.screensaverSlides}
           primaryColor={branding.primaryColor}
-          onDismiss={() => setShowScreensaver(false)}
+          onDismiss={() => {
+            screensaverDismissedAtRef.current = Date.now();
+            setShowScreensaver(false);
+          }}
         />
       )}
 
