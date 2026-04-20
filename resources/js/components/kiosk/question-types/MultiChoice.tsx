@@ -25,9 +25,10 @@ export default function MultiChoice({ options, value, onChange, otherTexts, onOt
       <div
         className={cn(
           'flex flex-wrap justify-center gap-2',
-          shouldScroll && 'max-h-[38vh] overflow-y-auto p-1 rounded-lg border border-border/40',
+          shouldScroll && 'max-h-[calc(38vh-30px)] overflow-y-auto p-2 rounded-lg border border-border/40',
+          shouldScroll && '[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full',
         )}
-        style={shouldScroll ? { WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } : undefined}
+        style={shouldScroll ? { WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', scrollbarWidth: 'thin', scrollbarColor: 'rgba(148,163,184,0.5) transparent' } : undefined}
       >
         {options.map((opt) => {
           const selected = value.includes(opt.id);
