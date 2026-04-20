@@ -46,10 +46,16 @@ function KioskInner() {
   // Track previous step for direction
   const prevStepRef = useRef<Step>('sentiment');
 
-  // Kiosk mode class on body
+  // Kiosk mode class on body + force light theme (no dark mode on public kiosk)
   useEffect(() => {
     document.body.classList.add('kiosk-mode');
-    return () => document.body.classList.remove('kiosk-mode');
+    const root = document.documentElement;
+    const wasDark = root.classList.contains('dark');
+    root.classList.remove('dark');
+    return () => {
+      document.body.classList.remove('kiosk-mode');
+      if (wasDark) root.classList.add('dark');
+    };
   }, []);
 
   // Reset flow
