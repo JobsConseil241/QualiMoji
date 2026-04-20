@@ -18,9 +18,16 @@ export default function MultiChoice({ options, value, onChange, otherTexts, onOt
 
   const selectedOthers = options.filter((o) => o.is_other === true && value.includes(o.id));
 
+  const shouldScroll = options.length > 3;
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap justify-center gap-2">
+      <div
+        className={cn(
+          'flex flex-wrap justify-center gap-2',
+          shouldScroll && 'max-h-[38vh] overflow-y-auto p-1',
+        )}
+      >
         {options.map((opt) => {
           const selected = value.includes(opt.id);
           return (
