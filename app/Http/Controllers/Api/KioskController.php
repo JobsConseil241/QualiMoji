@@ -43,20 +43,29 @@ class KioskController extends Controller
             'questionnaire_mode' => $mode,
         ];
 
+        // Branch override REPLACES org defaults (no merge). If the branch has any
+        // QuestionConfig rows (active or not), use only those; otherwise fall back
+        // to the org-level configs.
+        $branchHasSentiments = QuestionConfig::where('branch_id', $branchId)->exists();
+        $response['question_configs'] = QuestionConfig::query()
+            ->when($branchHasSentiments,
+                fn ($q) => $q->where('branch_id', $branchId),
+                fn ($q) => $q->where('organization_id', $org->id)->whereNull('branch_id')
+            )
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
         if ($mode === 'open') {
-            $response['open_questions'] = OpenQuestion::where(function ($q) use ($branchId, $org) {
-                $q->where('branch_id', $branchId)
-                  ->orWhere(function ($q2) use ($org) {
-                      $q2->where('organization_id', $org->id)->whereNull('branch_id');
-                  });
-            })->where('is_active', true)->orderBy('sort_order')->get();
-        } else {
-            $response['question_configs'] = QuestionConfig::where(function ($q) use ($branchId, $org) {
-                $q->where('branch_id', $branchId)
-                  ->orWhere(function ($q2) use ($org) {
-                      $q2->where('organization_id', $org->id)->whereNull('branch_id');
-                  });
-            })->where('is_active', true)->orderBy('sort_order')->get();
+            $branchHasOpenQuestions = OpenQuestion::where('branch_id', $branchId)->exists();
+            $response['open_questions'] = OpenQuestion::query()
+                ->when($branchHasOpenQuestions,
+                    fn ($q) => $q->where('branch_id', $branchId),
+                    fn ($q) => $q->where('organization_id', $org->id)->whereNull('branch_id')
+                )
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
         }
 
         return response()->json($response);

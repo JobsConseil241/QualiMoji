@@ -149,7 +149,7 @@ class BranchController extends Controller
             ->groupBy('yw');
 
         $evolution = [];
-        $sentimentScores = ['very_happy' => 4, 'happy' => 3, 'unhappy' => 2, 'very_unhappy' => 1];
+        $sentimentScores = ['very_happy' => 5, 'happy' => 4, 'neutral' => 3, 'unhappy' => 2, 'very_unhappy' => 1];
         foreach ($weeklyStats as $yw => $sentiments) {
             $totalScore = 0;
             $totalCount = 0;

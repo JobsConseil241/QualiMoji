@@ -87,9 +87,9 @@ class SettingsController extends Controller
                 ],
                 [
                     'user_id' => $user->id,
-                    'emoji' => $config['emoji'] ?? null,
-                    'label' => $config['label'] ?? null,
-                    'question' => $config['question'] ?? null,
+                    'emoji' => $config['emoji'] ?? '',
+                    'label' => $config['label'] ?? '',
+                    'question' => $config['question'] ?? '',
                     'options' => $config['options'] ?? [],
                     'allow_free_text' => $config['allow_free_text'] ?? true,
                     'is_active' => $config['is_active'] ?? true,

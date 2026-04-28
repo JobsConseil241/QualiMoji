@@ -369,8 +369,8 @@ export function buildReportData(
     ? allBranches.filter((b: any) => options.branchIds!.includes(b.id))
     : allBranches;
 
-  const sentimentScores: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
-  const sentimentLabels: Record<string, string> = { very_happy: 'Très satisfait', happy: 'Satisfait', unhappy: 'Insatisfait', very_unhappy: 'Très insatisfait' };
+  const sentimentScores: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 2, very_unhappy: 1 };
+  const sentimentLabels: Record<string, string> = { very_happy: 'Très satisfait', happy: 'Satisfait', neutral: 'Neutre', unhappy: 'Insatisfait', very_unhappy: 'Très insatisfait' };
 
   const filteredFeedbacks = allFeedbacks.filter((f: any) => {
     if (options?.branchIds?.length && !options.branchIds.includes(f.branch_id)) return false;

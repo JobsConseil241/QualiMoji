@@ -18,20 +18,22 @@ import type {
   QuestionnaireMode, OpenQuestion, BranchModeEntry,
 } from '@/types/questionnaire';
 
-type SentimentKey = 'very_happy' | 'happy' | 'unhappy' | 'very_unhappy';
+type SentimentKey = 'very_happy' | 'happy' | 'neutral' | 'unhappy' | 'very_unhappy';
 
 const DEFAULT_INTRO_MESSAGES: Record<SentimentKey, string> = {
   very_happy: 'Formidable ! 🎉 Votre satisfaction nous fait plaisir. Dites-nous ce qui a rendu votre visite exceptionnelle.',
   happy: 'Merci pour votre confiance. Vos réponses nous aident à maintenir ce niveau de service.',
+  neutral: 'Merci de votre passage. Pour nous aider à mieux comprendre votre ressenti, dites-nous ce qui pourrait être amélioré.',
   unhappy: "Nous regrettons que votre expérience n'ait pas été à la hauteur. Vos réponses nous aideront à progresser.",
   very_unhappy: "Nous sommes sincèrement désolés. Votre témoignage est précieux — prenons le temps d'écouter pour corriger ce qui doit l'être.",
 };
 
 const SENTIMENT_META: Record<SentimentKey, { emoji: string; label: string }> = {
-  very_happy: { emoji: '😊', label: 'Très satisfait' },
-  happy: { emoji: '🙂', label: 'Satisfait' },
+  very_happy: { emoji: '😍', label: 'Très satisfait' },
+  happy: { emoji: '😊', label: 'Satisfait' },
+  neutral: { emoji: '😐', label: 'Neutre' },
   unhappy: { emoji: '😕', label: 'Insatisfait' },
-  very_unhappy: { emoji: '😞', label: 'Très insatisfait' },
+  very_unhappy: { emoji: '😡', label: 'Très insatisfait' },
 };
 
 export default function QuestionnaireSettings() {

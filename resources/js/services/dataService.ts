@@ -37,7 +37,7 @@ export interface DbAlert {
 
 export function computeBranchStats(branch: DbBranch, feedbacks: DbFeedback[]) {
     const branchFeedbacks = feedbacks.filter(f => f.branch_id === branch.id);
-    const sentimentScores: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
+    const sentimentScores: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 2, very_unhappy: 1 };
     const totalFeedbacks = branchFeedbacks.length;
     const avgScore = totalFeedbacks > 0
         ? branchFeedbacks.reduce((s, f) => s + (sentimentScores[f.sentiment] || 3), 0) / totalFeedbacks
