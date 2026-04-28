@@ -88,7 +88,7 @@ class QuestionConfigSeeder extends Seeder
         foreach ($organizations as $org) {
             // Pick any admin/owner user from this org as the author.
             $author = User::where('organization_id', $org->id)
-                ->whereIn('role', ['admin', 'it_admin', 'quality_director'])
+                ->whereHas('userRole', fn ($q) => $q->whereIn('role', ['admin', 'it_admin', 'quality_director']))
                 ->first()
                 ?? User::where('organization_id', $org->id)->first();
 
