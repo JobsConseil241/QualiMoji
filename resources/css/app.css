@@ -147,6 +147,15 @@ body.kiosk-mode {
   @apply px-5 py-3 rounded-full border-2 text-sm font-medium transition-all;
 }
 
+@keyframes kiosk-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.kiosk-blink {
+  animation: kiosk-blink 2.5s ease-in-out infinite;
+}
+
 .kiosk-option-chip:active {
   transform: scale(0.95);
 }
