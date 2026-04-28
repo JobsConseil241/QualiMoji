@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Organization;
 use App\Models\QuestionConfig;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -10,9 +11,6 @@ class QuestionConfigSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('email', 'admin@qualimoji.com')->first();
-        $orgId = '00000000-0000-0000-0000-000000000001';
-
         $toOptions = function (array $labels): array {
             $out = [];
             foreach ($labels as $i => $label) {
@@ -78,19 +76,41 @@ class QuestionConfigSeeder extends Seeder
             ],
         ];
 
-        foreach ($configs as $config) {
-            QuestionConfig::updateOrCreate(
-                [
-                    'organization_id' => $orgId,
-                    'branch_id' => null,
-                    'sentiment' => $config['sentiment'],
-                ],
-                [
-                    ...$config,
-                    'user_id' => $admin->id,
-                    'version' => 1,
-                ]
-            );
+        // Iterate over every existing organization so this works in dev (seeded org)
+        // and in prod (real orgs) without hardcoding IDs or admin email.
+        $organizations = Organization::all();
+
+        if ($organizations->isEmpty()) {
+            $this->command->warn('No organizations found — skipping QuestionConfigSeeder.');
+            return;
+        }
+
+        foreach ($organizations as $org) {
+            // Pick any admin/owner user from this org as the author.
+            $author = User::where('organization_id', $org->id)
+                ->whereIn('role', ['admin', 'it_admin', 'quality_director'])
+                ->first()
+                ?? User::where('organization_id', $org->id)->first();
+
+            if (! $author) {
+                $this->command->warn("Org {$org->id} has no users — skipping.");
+                continue;
+            }
+
+            foreach ($configs as $config) {
+                QuestionConfig::firstOrCreate(
+                    [
+                        'organization_id' => $org->id,
+                        'branch_id' => null,
+                        'sentiment' => $config['sentiment'],
+                    ],
+                    [
+                        ...$config,
+                        'user_id' => $author->id,
+                        'version' => 1,
+                    ]
+                );
+            }
         }
     }
 }
