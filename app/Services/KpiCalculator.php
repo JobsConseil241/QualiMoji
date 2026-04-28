@@ -46,7 +46,7 @@ class KpiCalculator
         $satisfactionRate = $total > 0 ? round(($happy / $total) * 100, 1) : 0;
         $prevSatisfactionRate = $previousTotal > 0 ? round(($prevHappy / $previousTotal) * 100, 1) : 0;
 
-        // 2. NPS approximé (very_happy = promoteur, happy = passif, unhappy/very_unhappy = détracteur)
+        // 2. NPS approximé (very_happy = promoteur, happy/neutral = passif, unhappy/very_unhappy = détracteur)
         $promoters = $sentimentCounts->get('very_happy', 0);
         $detractors = $unhappy;
         $nps = $total > 0 ? round((($promoters - $detractors) / $total) * 100) : 0;
@@ -155,6 +155,7 @@ class KpiCalculator
             'sentiment_counts' => [
                 'very_happy' => $sentimentCounts->get('very_happy', 0),
                 'happy' => $sentimentCounts->get('happy', 0),
+                'neutral' => $sentimentCounts->get('neutral', 0),
                 'unhappy' => $sentimentCounts->get('unhappy', 0),
                 'very_unhappy' => $sentimentCounts->get('very_unhappy', 0),
             ],

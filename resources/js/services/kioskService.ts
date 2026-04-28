@@ -21,10 +21,11 @@ export async function fetchKioskConfig(branchId: string) {
     const questionnaireMode = data.questionnaire_mode ?? 'quadrimoji';
 
     const DEFAULT_SENTIMENTS: KioskQuestion[] = [
-        { sentiment: 'very_happy', emoji: '😊', label: 'Très satisfait', question: '', options: [], allowFreeText: false, isActive: true },
-        { sentiment: 'happy', emoji: '🙂', label: 'Satisfait', question: '', options: [], allowFreeText: false, isActive: true },
+        { sentiment: 'very_happy', emoji: '😍', label: 'Très satisfait', question: '', options: [], allowFreeText: false, isActive: true },
+        { sentiment: 'happy', emoji: '😊', label: 'Satisfait', question: '', options: [], allowFreeText: false, isActive: true },
+        { sentiment: 'neutral', emoji: '😐', label: 'Neutre', question: '', options: [], allowFreeText: false, isActive: true },
         { sentiment: 'unhappy', emoji: '😕', label: 'Insatisfait', question: '', options: [], allowFreeText: false, isActive: true },
-        { sentiment: 'very_unhappy', emoji: '😞', label: 'Très insatisfait', question: '', options: [], allowFreeText: false, isActive: true },
+        { sentiment: 'very_unhappy', emoji: '😡', label: 'Très insatisfait', question: '', options: [], allowFreeText: false, isActive: true },
     ];
 
     // Transform question_configs to KioskQuestion[]
@@ -32,7 +33,7 @@ export async function fetchKioskConfig(branchId: string) {
         .filter((q: any) => q.is_active !== false)
         .map((q: any) => ({
             sentiment: q.sentiment,
-            emoji: q.emoji ?? ({ very_happy: '😊', happy: '🙂', unhappy: '😕', very_unhappy: '😞' }[q.sentiment] || '🙂'),
+            emoji: q.emoji ?? (({ very_happy: '😍', happy: '😊', neutral: '😐', unhappy: '😕', very_unhappy: '😡' } as Record<string, string>)[q.sentiment] || '🙂'),
             label: q.label ?? q.sentiment,
             question: q.question ?? '',
             options: Array.isArray(q.options)

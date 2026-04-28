@@ -47,6 +47,16 @@ class QuestionConfigSeeder extends Seeder
                 'sort_order' => 1,
             ],
             [
+                'sentiment' => 'neutral',
+                'emoji' => '😐',
+                'label' => 'Neutre',
+                'question' => 'Quel est votre ressenti ?',
+                'options' => $toOptions(['Service correct', 'Sans plus', 'Pourrait être mieux', 'Aucun avis particulier']),
+                'allow_free_text' => true,
+                'is_active' => true,
+                'sort_order' => 2,
+            ],
+            [
                 'sentiment' => 'unhappy',
                 'emoji' => '😕',
                 'label' => 'Insatisfait',
@@ -54,7 +64,7 @@ class QuestionConfigSeeder extends Seeder
                 'options' => $toOptions(['Réduire le temps d\'attente', 'Améliorer l\'accueil', 'Mieux informer', 'Moderniser les locaux']),
                 'allow_free_text' => true,
                 'is_active' => true,
-                'sort_order' => 2,
+                'sort_order' => 3,
             ],
             [
                 'sentiment' => 'very_unhappy',
@@ -64,16 +74,23 @@ class QuestionConfigSeeder extends Seeder
                 'options' => $toOptions(['Temps d\'attente trop long', 'Personnel désagréable', 'Problème non résolu', 'Manque d\'information', 'Environnement dégradé']),
                 'allow_free_text' => true,
                 'is_active' => true,
-                'sort_order' => 3,
+                'sort_order' => 4,
             ],
         ];
 
         foreach ($configs as $config) {
-            QuestionConfig::create(array_merge($config, [
-                'user_id' => $admin->id,
-                'organization_id' => $orgId,
-                'version' => 1,
-            ]));
+            QuestionConfig::updateOrCreate(
+                [
+                    'organization_id' => $orgId,
+                    'branch_id' => null,
+                    'sentiment' => $config['sentiment'],
+                ],
+                [
+                    ...$config,
+                    'user_id' => $admin->id,
+                    'version' => 1,
+                ]
+            );
         }
     }
 }

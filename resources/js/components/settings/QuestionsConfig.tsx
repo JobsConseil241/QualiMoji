@@ -75,6 +75,20 @@ const DEFAULT_CONFIGS: QuestionConfig[] = [
     isActive: true,
   },
   {
+    sentiment: 'neutral',
+    emoji: '😐',
+    label: 'Neutre',
+    question: 'Quel est votre ressenti ?',
+    options: [
+      { id: 'n1', label: 'Service correct', order: 0 },
+      { id: 'n2', label: 'Sans plus', order: 1 },
+      { id: 'n3', label: 'Pourrait être mieux', order: 2 },
+      { id: 'n4', label: 'Aucun avis particulier', order: 3 },
+    ],
+    allowFreeText: true,
+    isActive: true,
+  },
+  {
     sentiment: 'unhappy',
     emoji: '😕',
     label: 'Insatisfait',

@@ -96,8 +96,9 @@ export default function Dashboard() {
 
   const sentimentData = [
     { name: 'Très satisfait', value: sentimentCounts.very_happy ?? 0, color: '#16A34A' },
-    { name: 'Satisfait', value: sentimentCounts.happy ?? 0, color: '#84CC16' },
-    { name: 'Insatisfait', value: sentimentCounts.unhappy ?? 0, color: '#F97316' },
+    { name: 'Satisfait', value: sentimentCounts.happy ?? 0, color: '#86EFAC' },
+    { name: 'Neutre', value: sentimentCounts.neutral ?? 0, color: '#FACC15' },
+    { name: 'Insatisfait', value: sentimentCounts.unhappy ?? 0, color: '#FCA5A5' },
     { name: 'Très insatisfait', value: sentimentCounts.very_unhappy ?? 0, color: '#DC2626' },
   ];
 
@@ -106,7 +107,7 @@ export default function Dashboard() {
   const satisfactionByBranch = (() => {
     const entries = Object.entries(dailyStats) as [string, any[]][];
     if (entries.length === 0) return [];
-    const sentimentScores: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
+    const sentimentScores: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 2, very_unhappy: 1 };
     return entries
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, sentiments]) => {

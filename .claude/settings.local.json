@@ -23,7 +23,13 @@
       "Bash(git checkout *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(git rev-list *)",
+      "Bash(lsof -nP -iTCP:8000 -sTCP:LISTEN)",
+      "Bash(lsof -nP -iTCP:5173 -sTCP:LISTEN)",
+      "Bash(php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make\\(\"Illuminate\\\\Contracts\\\\Console\\\\Kernel\"\\)->bootstrap\\(\\); echo \"lifetime: \" . config\\(\"session.lifetime\"\\) . \"\\\\n\"; echo \"domain: \" . var_export\\(config\\(\"session.domain\"\\), true\\) . \"\\\\n\"; echo \"same_site: \" . config\\(\"session.same_site\"\\) . \"\\\\n\"; echo \"secure: \" . var_export\\(config\\(\"session.secure\"\\), true\\) . \"\\\\n\"; echo \"driver: \" . config\\(\"session.driver\"\\) . \"\\\\n\";')",
+      "Bash(php -l app/Http/Controllers/Api/FeedbackController.php app/Http/Controllers/Api/KioskController.php app/Http/Controllers/Api/BranchController.php app/Services/KpiCalculator.php database/seeders/QuestionConfigSeeder.php)",
+      "Bash(php -l app/Http/Controllers/Api/SettingsController.php database/seeders/QuestionConfigSeeder.php)"
     ]
   }
 }

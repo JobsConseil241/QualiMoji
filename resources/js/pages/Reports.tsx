@@ -47,7 +47,7 @@ export default function Reports() {
   const [customStart, setCustomStart] = useState<Date>(subDays(new Date(), 30));
   const [customEnd, setCustomEnd] = useState<Date>(new Date());
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
-  const [selectedSentiments, setSelectedSentiments] = useState<string[]>(['very_happy', 'happy', 'unhappy', 'very_unhappy']);
+  const [selectedSentiments, setSelectedSentiments] = useState<string[]>(['very_happy', 'happy', 'neutral', 'unhappy', 'very_unhappy']);
   const [modeFilter, setModeFilter] = useState<'all' | 'quadrimoji' | 'open'>('all');
   const [includeGlobalMetrics, setIncludeGlobalMetrics] = useState(true);
   const [includeBranchDetail, setIncludeBranchDetail] = useState(true);
@@ -423,10 +423,11 @@ export default function Reports() {
                 <Label className="text-xs font-semibold">Sentiments à inclure</Label>
                 <div className="flex gap-3">
                   {[
-                    { key: 'very_happy', label: '😄 Très satisfait', color: 'text-accent' },
+                    { key: 'very_happy', label: '😍 Très satisfait', color: 'text-accent' },
                     { key: 'happy', label: '😊 Satisfait', color: 'text-primary' },
-                    { key: 'unhappy', label: '😕 Insatisfait', color: 'text-orange-500' },
-                    { key: 'very_unhappy', label: '😞 Très insatisfait', color: 'text-destructive' },
+                    { key: 'neutral', label: '😐 Neutre', color: 'text-yellow-600' },
+                    { key: 'unhappy', label: '😕 Insatisfait', color: 'text-pink-600' },
+                    { key: 'very_unhappy', label: '😡 Très insatisfait', color: 'text-destructive' },
                   ].map((s) => (
                     <label key={s.key} className={cn(
                       'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-xs',

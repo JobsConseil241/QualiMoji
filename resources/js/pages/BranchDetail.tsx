@@ -28,7 +28,8 @@ import { BranchKpiConfig } from '@/components/kpi/BranchKpiConfig';
 const sentimentConfig: Record<string, { label: string; color: string }> = {
   very_happy: { label: 'Très satisfait', color: 'bg-success/10 text-success border-success/30' },
   happy: { label: 'Satisfait', color: 'bg-primary/10 text-primary border-primary/30' },
-  unhappy: { label: 'Insatisfait', color: 'bg-orange-500/10 text-orange-500 border-orange-500/30' },
+  neutral: { label: 'Neutre', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30' },
+  unhappy: { label: 'Insatisfait', color: 'bg-pink-500/10 text-pink-600 border-pink-500/30' },
   very_unhappy: { label: 'Très insatisfait', color: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
 
@@ -38,8 +39,8 @@ const ISSUE_COLORS = [
 ];
 
 function sentimentToScore(s: string): number {
-  const map: Record<string, number> = { very_happy: 4, happy: 3, unhappy: 2, very_unhappy: 1 };
-  return map[s] || 2;
+  const map: Record<string, number> = { very_happy: 5, happy: 4, neutral: 3, unhappy: 2, very_unhappy: 1 };
+  return map[s] || 3;
 }
 
 function getComment(f: any, openQuestionsMap?: Record<string, any>): string {
@@ -268,6 +269,7 @@ export default function BranchDetail() {
                       <SelectItem value="all">Tous</SelectItem>
                       <SelectItem value="very_happy">Très satisfait</SelectItem>
                       <SelectItem value="happy">Satisfait</SelectItem>
+                      <SelectItem value="neutral">Neutre</SelectItem>
                       <SelectItem value="unhappy">Insatisfait</SelectItem>
                       <SelectItem value="very_unhappy">Très insatisfait</SelectItem>
                     </SelectContent>

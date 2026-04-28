@@ -10,11 +10,15 @@ const SMILEY_CONFIG: Record<string, { color: string; mouth: string; eyeY?: numbe
     mouth: 'M 25,62 Q 50,85 75,62',
   },
   happy: {
-    color: '#84CC16',
+    color: '#86EFAC',
     mouth: 'M 28,60 Q 50,75 72,60',
   },
+  neutral: {
+    color: '#FACC15',
+    mouth: 'M 28,68 L 72,68',
+  },
   unhappy: {
-    color: '#F97316',
+    color: '#FCA5A5',
     mouth: 'M 28,72 Q 50,58 72,72',
   },
   very_unhappy: {

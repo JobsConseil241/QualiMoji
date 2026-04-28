@@ -26,11 +26,13 @@ export default function EmojiSelector({ questions, onSelect, haptic }: EmojiSele
             transition={{ delay: i * 0.08, type: 'spring', stiffness: 300, damping: 25 }}
             aria-label={q.label}
           >
-            {hasSmiley ? (
-              <SmileyFace sentiment={q.sentiment} size={120} className="w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32" />
-            ) : (
-              <span className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl">{q.emoji}</span>
-            )}
+            <div className="w-1/2 aspect-square flex items-center justify-center">
+              {hasSmiley ? (
+                <SmileyFace sentiment={q.sentiment} size={200} className="w-full h-full" />
+              ) : (
+                <span className="text-[3rem] sm:text-[5rem] md:text-[6rem] lg:text-[8rem] leading-none">{q.emoji}</span>
+              )}
+            </div>
             <span className="text-[10px] sm:text-sm md:text-base font-medium text-muted-foreground leading-tight text-center">{q.label}</span>
           </motion.button>
         );
